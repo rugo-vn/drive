@@ -1,0 +1,40 @@
+{
+  "name": "@rugo-vn/driver",
+  "version": "1.0.0",
+  "description": "Rugo Drivers for contact with databases, filesystems",
+  "main": "./src/index.js",
+  "type": "module",
+  "scripts": {
+    "doc": "jsdoc2md **/*.js > docs/API.md",
+    "lint:check": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "lint": "npm run lint:fix",
+    "test": "mocha",
+    "coverage": "c8 npm run test",
+    "pre-commit": "npm run lint && npm run coverage && npm run doc"
+  },
+  "author": "Vu Anh Hao <hi@haova.me> (https://www.haova.me)",
+  "license": "MIT",
+  "devDependencies": {
+    "c8": "^7.11.2",
+    "chai": "^4.3.6",
+    "dotenv": "^16.0.1",
+    "eslint": "^8.14.0",
+    "eslint-config-standard": "^17.0.0",
+    "eslint-plugin-jsdoc": "^39.2.9",
+    "jsdoc-to-markdown": "^7.1.1",
+    "mocha": "^10.0.0",
+    "mongodb-memory-server": "^8.5.2",
+    "rimraf": "^3.0.2"
+  },
+  "dependencies": {
+    "base64url": "^3.0.1",
+    "colors": "^1.4.0",
+    "lowdb": "^3.0.0",
+    "mime": "^3.0.0",
+    "mongodb": "^4.6.0",
+    "nanoid": "^3.3.4",
+    "ramda": "^0.28.0",
+    "@rugo-vn/common": "^1.0.0"
+  }
+}
