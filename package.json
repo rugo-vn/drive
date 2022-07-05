@@ -11,8 +11,7 @@
     "lint": "npm run lint:fix",
     "test": "mocha",
     "coverage": "c8 npm run test",
-    "pre-commit": "npm run lint && npm run coverage && npm run doc",
-    "publish": "npm publish --access public"
+    "pre-commit": "npm run lint && npm run coverage && npm run doc"
   },
   "author": "Vu Anh Hao <hi@haova.me> (https://www.haova.me)",
   "license": "MIT",
