@@ -1,6 +1,6 @@
 {
   "name": "@rugo-vn/driver",
-  "version": "1.0.1",
+  "version": "2.0.0-beta.0",
   "description": "Rugo Drivers for contact with databases, filesystems",
   "main": "./src/index.js",
   "type": "module",
@@ -24,9 +24,11 @@
     "eslint-plugin-jsdoc": "^39.2.9",
     "jsdoc-to-markdown": "^7.1.1",
     "mocha": "^10.0.0",
+    "moleculer": "^0.14.21",
     "mongodb-memory-server": "^8.5.2"
   },
   "dependencies": {
+    "@rugo-vn/common": "^1.0.0",
     "base64url": "^3.0.1",
     "colors": "^1.4.0",
     "lowdb": "^3.0.0",
@@ -34,7 +36,6 @@
     "mongodb": "^4.6.0",
     "nanoid": "^3.3.4",
     "ramda": "^0.28.0",
-    "rimraf": "^3.0.2",
-    "@rugo-vn/common": "^1.0.0"
+    "rimraf": "^3.0.2"
   }
 }
