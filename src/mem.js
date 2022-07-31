@@ -1,20 +1,12 @@
 import { join } from 'path';
 
 import { Low, JSONFile } from 'lowdb';
-import { prop, find, propEq, count, whereEq, filter, pipe, sortWith, compose, map, descend, ascend, take, drop, keys, forEach } from 'ramda';
+import { prop, find, propEq, count, whereEq, filter, pipe, sortWith, compose, map, descend, ascend, take, drop, keys, forEach, length } from 'ramda';
 import { generateId } from '@rugo-vn/common';
 
 export const name = 'mem';
 
 export const actions = {
-  id ({ params }) { return params.id || generateId(); },
-
-  get ({ params, locals }) {
-    const { collection } = locals;
-
-    return find(propEq('_id', params.id))(collection.data) || null;
-  },
-
   count ({ params, locals }) {
     const { filters } = params;
     const { collection } = locals;
@@ -22,9 +14,13 @@ export const actions = {
     return count(whereEq(filters))(collection.data);
   },
 
-  list ({ params, locals }) {
+  find ({ params, locals }) {
     const { filters, sort, skip, limit } = params || {};
     const { collection } = locals;
+
+    if (filters && filters._id && typeof filters._id !== 'object') {
+      return [find(propEq('_id', filters._id))(collection.data) || null].filter(i => i);
+    }
 
     const pipeline = [filter(whereEq(filters || {}))];
 
@@ -66,10 +62,10 @@ export const actions = {
   },
 
   async patch ({ params, locals }) {
-    const { id, set, inc, unset } = params;
+    const { filters, set, inc, unset } = params || {};
     const { collection } = locals;
 
-    const pipeline = [filter(whereEq({ _id: id }))];
+    const pipeline = [filter(whereEq(filters || {}))];
 
     if (set) {
       pipeline.push(
@@ -101,7 +97,9 @@ export const actions = {
       );
     }
 
-    const result = pipe(...pipeline)(collection.data)[0] || null;
+    pipeline.push(length);
+
+    const result = pipe(...pipeline)(collection.data);
 
     if (result) { await collection.write(); }
 
@@ -109,21 +107,24 @@ export const actions = {
   },
 
   async remove ({ params, locals }) {
-    const { id } = params;
+    const { filters } = params || {};
     const { collection } = locals;
 
-    const pred = whereEq({ _id: id });
+    const pred = whereEq(filters || {});
 
     let index = 0;
+    let result = 0;
     while (index < collection.data.length) {
       if (pred(collection.data[index])) {
-        return collection.data.splice(index, 1)[0];
+        collection.data.splice(index, 1);
+        result++;
+        continue;
       }
 
       index++;
     }
 
-    return null;
+    return result;
   }
 };
 
