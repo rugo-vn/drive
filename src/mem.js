@@ -45,13 +45,8 @@ export const actions = {
     const { doc } = params;
     const { collection } = locals;
 
-    const currentDate = (new Date()).toISOString();
-
     const newDoc = {
       _id: generateId(),
-      createdAt: currentDate,
-      updatedAt: currentDate,
-      version: 1,
       ...doc
     };
 
