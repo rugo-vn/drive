@@ -1,6 +1,6 @@
 {
   "name": "@rugo-vn/driver",
-  "version": "2.0.0-beta.3",
+  "version": "2.0.0-beta.5",
   "description": "Rugo Drivers for contact with databases, filesystems",
   "main": "./src/index.js",
   "type": "module",
