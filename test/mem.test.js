@@ -45,7 +45,7 @@ describe('Mem service test', () => {
   });
 
   it('should create a document', async () => {
-    const doc = await broker.call('mem.create', { doc: SAMPLE_DOCUMENT }, DEMO_SETTINGS);
+    const doc = await broker.call('driver.mem.create', { doc: SAMPLE_DOCUMENT }, DEMO_SETTINGS);
     
     expect(doc).to.has.property('_id');
 
@@ -54,7 +54,7 @@ describe('Mem service test', () => {
   });
 
   it('should create a document with existed id', async () => {
-    const doc = await broker.call('mem.create', { doc: {
+    const doc = await broker.call('driver.mem.create', { doc: {
       _id: SAMPLE_ID,
       ...SAMPLE_DOCUMENT
     }}, DEMO_SETTINGS);
@@ -66,8 +66,8 @@ describe('Mem service test', () => {
   });
 
   it('should get a created document', async () => {
-    const doc = await broker.call('mem.create', { doc: SAMPLE_DOCUMENT }, DEMO_SETTINGS);
-    const [doc2] = await broker.call('mem.find', { filters: { _id: doc._id } }, DEMO_SETTINGS);
+    const doc = await broker.call('driver.mem.create', { doc: SAMPLE_DOCUMENT }, DEMO_SETTINGS);
+    const [doc2] = await broker.call('driver.mem.find', { filters: { _id: doc._id } }, DEMO_SETTINGS);
     
     expect(doc2).to.has.property('_id');
 
@@ -75,43 +75,43 @@ describe('Mem service test', () => {
       expect(doc2).to.has.property(key, SAMPLE_DOCUMENT[key]);
 
     // no existed get
-    const [doc3] = await broker.call('mem.find', { filters: { _id: 'noexisted' } }, DEMO_SETTINGS);
+    const [doc3] = await broker.call('driver.mem.find', { filters: { _id: 'noexisted' } }, DEMO_SETTINGS);
     expect(doc3).to.be.eq(undefined);
   });
 
   it('should create many document and count query', async () => {
     for (let i = 0; i < SAMPLE_MAX; i++){
-      await broker.call('mem.create', { doc: {
+      await broker.call('driver.mem.create', { doc: {
         ...SAMPLE_DOCUMENT,
         gender: i % 2 === 0 ? 'male' : 'female'
       }}, DEMO_SETTINGS);
     }
 
-    const no = await broker.call('mem.count', { filters: { gender: 'male' } }, DEMO_SETTINGS);
+    const no = await broker.call('driver.mem.count', { filters: { gender: 'male' } }, DEMO_SETTINGS);
     expect(no).to.be.eq(Math.round(SAMPLE_MAX/2));
   });
 
   it('should list document by query and controls', async () => {
     for (let i = 0; i < SAMPLE_MAX; i++){
-      await broker.call('mem.create', { doc: {
+      await broker.call('driver.mem.create', { doc: {
         ...SAMPLE_DOCUMENT,
         gender: i % 2 === 0 ? 'male' : 'female'
       }}, DEMO_SETTINGS);
     }
 
     // default list
-    const result = await broker.call('mem.find', null, DEMO_SETTINGS);
+    const result = await broker.call('driver.mem.find', null, DEMO_SETTINGS);
     expect(result.length).to.be.eq(SAMPLE_MAX);
 
     // list with query
-    const result2 = await broker.call('mem.find', { filters: { gender: 'female' } }, DEMO_SETTINGS);
+    const result2 = await broker.call('driver.mem.find', { filters: { gender: 'female' } }, DEMO_SETTINGS);
     expect(result2.length).to.be.eq(Math.floor(SAMPLE_MAX/2));
 
     for (let doc of result2)
       expect(doc).to.has.property('gender', 'female');
 
     // list with controls
-    const result3 = await broker.call('mem.find', { sort: { gender: 1, _id: -1 }, limit: 5, skip: SAMPLE_MAX - 6 }, DEMO_SETTINGS);
+    const result3 = await broker.call('driver.mem.find', { sort: { gender: 1, _id: -1 }, limit: 5, skip: SAMPLE_MAX - 6 }, DEMO_SETTINGS);
     expect(result3.length).to.be.eq(5);
 
     for (let doc of result3)
@@ -119,12 +119,12 @@ describe('Mem service test', () => {
   });
 
   it('should patch document', async () => {
-    const doc = await broker.call('mem.create', { doc: SAMPLE_DOCUMENT }, DEMO_SETTINGS);
-    await broker.call('mem.create', { doc: SAMPLE_DOCUMENT }, DEMO_SETTINGS);
+    const doc = await broker.call('driver.mem.create', { doc: SAMPLE_DOCUMENT }, DEMO_SETTINGS);
+    await broker.call('driver.mem.create', { doc: SAMPLE_DOCUMENT }, DEMO_SETTINGS);
     
     // simple change
-    const no = await broker.call('mem.patch', { filters: { _id: doc._id }, set: { foo: '123', age: 10, count: 1 } }, DEMO_SETTINGS);
-    const [doc4] = await broker.call('mem.find', { filters: { _id: doc._id } }, DEMO_SETTINGS);
+    const no = await broker.call('driver.mem.patch', { filters: { _id: doc._id }, set: { foo: '123', age: 10, count: 1 } }, DEMO_SETTINGS);
+    const [doc4] = await broker.call('driver.mem.find', { filters: { _id: doc._id } }, DEMO_SETTINGS);
 
     expect(no).to.be.eq(1);
 
@@ -133,19 +133,19 @@ describe('Mem service test', () => {
     expect(doc4).to.has.property('count', 1);
 
     // inc dec
-    const no2 = await broker.call('mem.patch', { filters: { _id: doc._id }, set: { foo: 'xyz'}, inc: { count: 1, age: -2 } }, DEMO_SETTINGS);
+    const no2 = await broker.call('driver.mem.patch', { filters: { _id: doc._id }, set: { foo: 'xyz'}, inc: { count: 1, age: -2 } }, DEMO_SETTINGS);
 
     expect(no2).to.be.eq(1);
   });
 
   it('should remove documents', async () => {
-    const doc = await broker.call('mem.create', { doc: SAMPLE_DOCUMENT }, DEMO_SETTINGS);
-    await broker.call('mem.create', { doc: SAMPLE_DOCUMENT }, DEMO_SETTINGS);
+    const doc = await broker.call('driver.mem.create', { doc: SAMPLE_DOCUMENT }, DEMO_SETTINGS);
+    await broker.call('driver.mem.create', { doc: SAMPLE_DOCUMENT }, DEMO_SETTINGS);
 
-    const no = await broker.call('mem.remove', { filters: { _id: doc._id } }, DEMO_SETTINGS);
+    const no = await broker.call('driver.mem.remove', { filters: { _id: doc._id } }, DEMO_SETTINGS);
     expect(no).to.be.eq(1);
 
-    const [doc3] = await broker.call('mem.find', { filters: { _id: doc._id } }, DEMO_SETTINGS);
+    const [doc3] = await broker.call('driver.mem.find', { filters: { _id: doc._id } }, DEMO_SETTINGS);
     expect(doc3).to.be.eq(undefined);
   });
 });

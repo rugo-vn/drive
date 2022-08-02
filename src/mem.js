@@ -4,7 +4,7 @@ import { Low, JSONFile } from 'lowdb';
 import { prop, find, propEq, count, whereEq, filter, pipe, sortWith, compose, map, descend, ascend, take, drop, keys, forEach, length } from 'ramda';
 import { generateId } from '@rugo-vn/common';
 
-export const name = 'mem';
+export const name = 'driver.mem';
 
 export const actions = {
   count ({ params, locals }) {
