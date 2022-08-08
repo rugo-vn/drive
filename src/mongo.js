@@ -34,11 +34,11 @@ export const actions = {
     }
 
     if (skip) {
-      queryBuilder = queryBuilder.skip(skip);
+      queryBuilder = queryBuilder.skip(parseInt(skip));
     }
 
-    if (typeof limit === 'number') {
-      queryBuilder = queryBuilder.limit(limit);
+    if (limit !== undefined) {
+      queryBuilder = queryBuilder.limit(parseInt(limit));
     }
 
     return await queryBuilder.toArray();
@@ -93,7 +93,7 @@ export const actions = {
 
 export const hooks = {
   before: {
-    async '*' (ctx) {
+    async all(ctx) {
       const { collection: name } = ctx.meta;
 
       if (!name) { throw new Error('Collection was not defined.'); }
