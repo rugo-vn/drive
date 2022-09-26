@@ -1,6 +1,6 @@
 {
   "name": "@rugo-vn/driver",
-  "version": "2.0.0-beta.5",
+  "version": "2.0.0",
   "description": "Rugo Drivers for contact with databases, filesystems",
   "main": "./src/index.js",
   "type": "module",
@@ -29,12 +29,14 @@
   },
   "dependencies": {
     "@rugo-vn/common": "^1.0.0",
+    "@rugo-vn/service": "../service",
     "base64url": "^3.0.1",
     "colors": "^1.4.0",
     "lowdb": "^3.0.0",
     "mime": "^3.0.0",
     "mongodb": "^4.8.1",
     "nanoid": "^3.3.4",
+    "object-hash": "^3.0.0",
     "ramda": "^0.28.0",
     "rimraf": "^3.0.2"
   }

@@ -125,7 +125,7 @@ export const actions = {
 
 export const hooks = {
   before: {
-    async all(ctx) {
+    async all (ctx) {
       const { collection: name } = ctx.meta;
 
       if (!name) { throw new Error('Collection was not defined.'); }
