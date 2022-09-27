@@ -1,16 +1,23 @@
 /* eslint-disable */
 
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import fs from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
 import { createBroker } from '@rugo-vn/service';
 import { assert, expect } from 'chai';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import rimraf from 'rimraf';
+
 import { ValidationError } from '../src/exception.js';
 
-const drivers = ['mongo'];
+const drivers = ['mongo', 'mem'];
 const schema = {
   _name: 'demo',
   _uniques: ['name'],
   _indexes: ['name'],
   _searches: ['name'],
+  type: 'object',
   properties: {
     name: { type: 'string' },
     age: { type: 'number', minimum: 0 },
@@ -18,15 +25,31 @@ const schema = {
   required: ['name'],
 };
 
-describe('mongodb test', () => {
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+describe('driver test', () => {
+  const root = join(__dirname, '.cache');
   let mongod, broker;
 
   before(async () => {
+    // fs
+    if (fs.existsSync(root))
+      rimraf.sync(root);
+
+    fs.mkdirSync(root, { recursive: true });
+
+    // mongo
     mongod = await MongoMemoryServer.create();
+
+    // create broker
     broker = createBroker({
-      _services: ['./src/mongo/index.js'],
+      _services: [
+        './src/mongo/index.js',
+        './src/mem/index.js'
+      ],
       driver: {
         mongo: mongod.getUri(),
+        mem: root,
       }
     });
 
@@ -37,6 +60,9 @@ describe('mongodb test', () => {
   after(async () => {
     await broker.close();
     await mongod.stop();
+
+    if (fs.existsSync(root))
+      rimraf.sync(root);
   });
 
   // common test
@@ -57,7 +83,7 @@ describe('mongodb test', () => {
       it('should not create a doc when not meet validation', async () => {
         try {
           await broker.call(`driver.${driverName}.create`, {data: {
-            name: 'foo',
+            name: 'bar',
             age: -1
           }}, { schema });
           assert.fail('should error')
@@ -113,6 +139,7 @@ describe('mongodb test', () => {
       it('should not update doc', async () => {
         try {
           await broker.call(`driver.${driverName}.update`, { query: { _id: docId }, inc: { age: -10 } }, { schema });
+          assert.fail('should error');
         } catch(errs) {
           expect(errs[0] instanceof ValidationError).to.be.eq(true);
           expect(errs[0]).to.has.property('detail', 'Value -6 is out of minimum range 0');

@@ -1,6 +1,8 @@
 import { path } from 'ramda';
 import { MongoClient } from 'mongodb';
 
+import { RugoError } from '@rugo-vn/service';
+
 export const name = 'driver.mongo';
 
 export * as actions from './actions.js';
@@ -10,7 +12,7 @@ export const started = async function () {
   const mongoUri = path(['settings', 'driver', 'mongo'], this);
 
   if (!mongoUri) {
-    throw new Error('Mongo settings was not defined.');
+    throw new RugoError('Mongo settings was not defined.');
   }
 
   this.client = await new Promise((resolve, reject) => {

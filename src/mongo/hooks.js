@@ -1,5 +1,6 @@
 import { path } from 'ramda';
 import hash from 'object-hash';
+
 import { ValidationError } from '../exception.js';
 
 export const before = {
