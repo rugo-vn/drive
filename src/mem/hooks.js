@@ -5,11 +5,12 @@ import { Low, JSONFile } from 'lowdb';
 import hash from 'object-hash';
 
 import { ValidationError } from '../exception.js';
+import { RugoError } from '@rugo-vn/service';
 
 export const before = {
   async all (args) {
     const name = path(['schema', '_name'], args);
-    if (!name) { throw new Error(`Schema ${args.schema ? '_name ' : ''}is not defined.`); }
+    if (!name) { throw new RugoError(`Schema ${args.schema ? '_name ' : ''}is not defined.`); }
 
     const { schema } = args;
 

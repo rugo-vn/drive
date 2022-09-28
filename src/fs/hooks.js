@@ -1,9 +1,10 @@
+import { RugoError } from '@rugo-vn/service';
 import { path } from 'ramda';
 
 export const before = {
   all (args) {
     const name = path(['schema', '_name'], args);
-    if (!name) { throw new Error(`Schema ${args.schema ? '_name ' : ''}is not defined.`); }
+    if (!name) { throw new RugoError(`Schema ${args.schema ? '_name ' : ''}is not defined.`); }
 
     const { schema } = args;
 
