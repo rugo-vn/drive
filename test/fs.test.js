@@ -43,10 +43,11 @@ describe('fs driver test', () => {
   after(async () => {
     await broker.close();
 
-    // if (fs.existsSync(root))
-    //   rimraf.sync(root);
+    if (fs.existsSync(root))
+      rimraf.sync(root);
   });
 
+  let docId;
   it('should create a doc', async () => {
     // no name file
     const doc = await broker.call(`driver.fs.create`, {}, { schema });
@@ -80,6 +81,8 @@ describe('fs driver test', () => {
     expect(doc3).to.has.property('parent', doc2._id);
     expect(doc3).to.has.property('size', 0);
     expect(doc3).to.has.property('updatedAt');
+
+    docId = doc3._id;
   });
 
   it('should find doc', async () => {
@@ -89,7 +92,7 @@ describe('fs driver test', () => {
       for (let y = 0; y < 3; y++) {
         let docY = await broker.call(`driver.fs.create`, { data: { parent: docX._id, mime: DIRECTORY_MIME } }, { schema });
         for (let z = 0; z < 3; z++) {
-          await broker.call(`driver.fs.create`, { data: { parent: docY._id } }, { schema });
+          await broker.call(`driver.fs.create`, { data: { name: 'foo' + z, parent: docY._id } }, { schema });
         }
       }
     }
@@ -100,7 +103,33 @@ describe('fs driver test', () => {
     expect(docs).to.has.property('length', 10);
   });
 
-  it('should update docs', async () => {
+  it('should count docs', async () => {
+    const no = await broker.call(`driver.fs.count`, {}, { schema });
+    expect(no).to.be.eq(42);
+  });
 
+  it('should update docs', async () => {
+    // single
+    const no = await broker.call(`driver.fs.update`, { query: { _id: docId }, set: { name: 'foo.jpg', parent: '' } }, { schema });
+    expect(no).to.be.eq(1);
+
+    const docs = await broker.call(`driver.fs.find`, { query: { parent: '', mime: 'image/jpeg' } }, { schema });
+
+    expect(docs[0]).to.has.property('name', 'foo.jpg');
+    expect(docs[0]).to.has.property('mime', 'image/jpeg');
+
+    docId = docs[0]._id;
+
+    // bulk (not available)
+    // const no2 = await broker.call(`driver.fs.update`, { query: { name: 'foo1' }, set: { name: 'bar', parent: '' } }, { schema });
+    // console.log(no2);
+  });
+
+  it('should remove doc', async () => {
+    const no = await broker.call(`driver.fs.remove`, { query: { _id: docId } }, { schema });
+    expect(no).to.be.eq(1);
+
+    const docs = await broker.call(`driver.fs.find`, { query: { parent: '', mime: 'image/jpeg' } }, { schema });
+    expect(docs).to.has.property('length', 0);
   });
 });

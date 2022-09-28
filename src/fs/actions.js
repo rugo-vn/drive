@@ -64,28 +64,38 @@ export const create = async function ({ collection, data = {} }) {
   if (mime === DIRECTORY_MIME) {
     fs.mkdirSync(docFullPath, { recursive: true });
   } else {
-    fs.openSync(docFullPath, 'w');
+    const fd = fs.openSync(docFullPath, 'w');
+    fs.closeSync(fd);
   }
 
   return get.bind(this)({ collection, id });
 };
 
 export const find = async function ({ collection, query = {}, sort, skip, limit }) {
-  const isDeepFind = query.parent === undefined;
+  const isDeepFind = query.parent === undefined && query._id === undefined;
 
   const parent = FsId(query.parent);
   const parentPath = parent.toPath();
   const parentFullPath = join(this.settings.root, collection, parentPath);
 
   // root list
-  const ls = fs.readdirSync(parentFullPath);
   let results = [];
-  for (const name of ls) {
-    const doc = await get.bind(this)({ collection, id: FsId.fromPath(join(parentPath, name)) });
-    results.push(doc);
+
+  if (query._id !== undefined) {
+    try {
+      query._id = FsId(query._id);
+      results.push(await get.bind(this)({ collection, id: query._id }));
+    } catch (_) {}
+  } else {
+    const ls = fs.readdirSync(parentFullPath);
+    for (const name of ls) {
+      const doc = await get.bind(this)({ collection, id: FsId.fromPath(join(parentPath, name)) });
+      results.push(doc);
+    }
   }
 
   // sort and query
+  delete query.parent;
   const pipeline = [];
 
   if (sort) {
@@ -136,4 +146,62 @@ export const find = async function ({ collection, query = {}, sort, skip, limit 
   }
 
   return isNaN(limit) ? results.splice(skip) : results.splice(skip, limit - skip);
+};
+
+export const count = async function ({ collection, query }) {
+  return (await find.bind(this)({ collection, query })).length;
+};
+
+export const update = async function ({ collection, query = {}, set = {} }) {
+  if (Object.keys(set).length === 0) { return 0; }
+
+  const ls = await find.bind(this)({ collection, query });
+
+  let no = 0;
+  for (const doc of ls) {
+    const newParent = set.parent === undefined ? FsId(doc.parent) : FsId(set.parent);
+    const newName = set.name || doc.name;
+    const newParentPath = newParent.toPath();
+
+    const id = FsId(doc._id);
+    const newId = FsId.fromPath(join(newParentPath, newName));
+    const newIdPath = newId.toPath();
+
+    if (newId.toString() === id.toString()) { continue; }
+
+    const newDocFullPath = join(this.settings.root, collection, newIdPath);
+    const docFullPath = join(this.settings.root, collection, id.toPath());
+
+    // check doc not existed
+    if (fs.existsSync(newDocFullPath)) {
+      throw new ValidationError(`Duplicate unique value "${newIdPath}"`);
+    }
+
+    // create container directory
+    const newParentFullPath = join(this.settings.root, collection, newParentPath);
+    if (!fs.existsSync(newParentFullPath)) {
+      fs.mkdirSync(newParentFullPath, { recursive: true });
+    }
+
+    fs.renameSync(docFullPath, newDocFullPath);
+    no++;
+  }
+
+  return no;
+};
+
+export const remove = async function ({ collection, query = {} }) {
+  const ls = await find.bind(this)({ collection, query });
+
+  let no = 0;
+  for (const doc of ls) {
+    const id = FsId(doc._id);
+    const idPath = id.toPath();
+    const docFullPath = join(this.settings.root, collection, idPath);
+
+    fs.rmSync(docFullPath, { recursive: true });
+    no++;
+  }
+
+  return no;
 };
