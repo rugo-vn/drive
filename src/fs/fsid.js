@@ -1,6 +1,6 @@
 import { join } from 'path';
 import { path } from 'ramda';
-import { RugoError } from '@rugo-vn/service';
+import { RugoException } from '@rugo-vn/service';
 import base64url from 'base64url';
 
 const INVALID_PATH_REGEX = /[<>:"\\|?*\u0000-\u001F]/g;  // eslint-disable-line
@@ -30,7 +30,7 @@ export function FsId (inputId) {
   // try decode path
   const decodedId = base64url.decode(workingId);
   if (INVALID_PATH_REGEX.test(decodedId)) {
-    throw new RugoError('Wrong input id');
+    throw new RugoException('Wrong input id');
   }
 
   // assign id

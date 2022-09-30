@@ -1,6 +1,6 @@
 /* eslint-disable */
 
-import { RugoError } from '@rugo-vn/service';
+import { RugoException } from '@rugo-vn/service';
 import { expect, assert } from 'chai';
 
 import { FsId } from '../src/fs/fsid.js';
@@ -31,7 +31,7 @@ describe('FsId test', () => {
       new FsId(TEST_PATH);
       assert.fail('should error');
     } catch (err) {
-      expect(err instanceof RugoError);
+      expect(err instanceof RugoException);
       expect(err).to.has.property('detail', 'Wrong input id');
     }
   });

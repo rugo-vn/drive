@@ -1,6 +1,6 @@
-import { RugoError } from '@rugo-vn/service';
+import { RugoException } from '@rugo-vn/service';
 
-export class ValidationError extends RugoError {
+export class ValidationError extends RugoException {
   constructor (msg) {
     super(msg);
 

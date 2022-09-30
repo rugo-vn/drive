@@ -28,7 +28,7 @@
     "mongodb-memory-server": "^8.5.2"
   },
   "dependencies": {
-    "@rugo-vn/service": "../service",
+    "@rugo-vn/service": "^2.0.0",
     "ajv": "^8.11.0",
     "ajv-formats": "^2.1.1",
     "base64url": "^3.0.1",

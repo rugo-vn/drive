@@ -1,7 +1,7 @@
 import fs from 'fs';
 import { join, parse } from 'path';
 
-import { RugoError } from '@rugo-vn/service';
+import { RugoException } from '@rugo-vn/service';
 import Mime from 'mime';
 
 import { ValidationError } from '../exception.js';
@@ -20,7 +20,7 @@ const get = async function ({ collection, id }) {
   const ext = info.ext;
 
   if (!fs.existsSync(docFullPath)) {
-    throw new RugoError('Doc not found');
+    throw new RugoException('Doc not found');
   }
 
   const stats = fs.statSync(docFullPath);

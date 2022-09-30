@@ -1,10 +1,10 @@
-import { RugoError } from '@rugo-vn/service';
+import { RugoException } from '@rugo-vn/service';
 import { ObjectId } from 'mongodb';
 
 export const create = async function ({ collection, data }) {
   const res = await collection.insertOne(data);
 
-  if (!res.insertedId) { throw new RugoError('Can not create a doc'); }
+  if (!res.insertedId) { throw new RugoException('Can not create a doc'); }
 
   return await collection.findOne({ _id: res.insertedId });
 };

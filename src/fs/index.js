@@ -1,4 +1,4 @@
-import { RugoError } from '@rugo-vn/service';
+import { RugoException } from '@rugo-vn/service';
 import { path } from 'ramda';
 
 export const name = 'driver.fs';
@@ -10,6 +10,6 @@ export const started = function () {
   this.settings.root = path(['settings', 'driver', 'fs'], this);
 
   if (!this.settings.root) {
-    throw new RugoError('Fs storage settings was not defined.');
+    throw new RugoException('Fs storage settings was not defined.');
   }
 };
