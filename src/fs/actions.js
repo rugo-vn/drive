@@ -1,5 +1,6 @@
 import fs from 'fs';
 import { join, parse } from 'path';
+import { copyFile } from 'node:fs/promises';
 
 import { RugoException } from '@rugo-vn/service';
 import Mime from 'mime';
@@ -205,3 +206,28 @@ export const remove = async function ({ collection, query = {} }) {
 
   return no;
 };
+
+export const upload = async function({ id, collection, path: tmpPath }) {
+  const doc = await get.bind(this)({ collection, id });
+
+  if (!doc || doc.mime === DIRECTORY_MIME)
+    throw new RugoException('Wrong file for upload');
+
+  const dstPath = doc._id.toPath();
+  const fullDstPath = join(this.settings.root, collection, dstPath);
+  
+  await copyFile(tmpPath, fullDstPath, 0);
+
+  return true;
+}
+
+export const download = async function({ id, collection }) {
+  const doc = await get.bind(this)({ collection, id });
+
+  if (!doc || doc.mime === DIRECTORY_MIME)
+    throw new RugoException('Wrong file for download');
+
+  const fullPath = join(this.settings.root, collection, doc._id.toPath());
+
+  return fullPath;
+}

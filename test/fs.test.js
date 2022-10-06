@@ -1,6 +1,6 @@
 /* eslint-disable */
 
-import fs from 'fs';
+import fs, { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -43,8 +43,8 @@ describe('fs driver test', () => {
   after(async () => {
     await broker.close();
 
-    if (fs.existsSync(root))
-      rimraf.sync(root);
+    // if (fs.existsSync(root))
+    //   rimraf.sync(root);
   });
 
   let docId;
@@ -58,6 +58,19 @@ describe('fs driver test', () => {
     expect(doc).to.has.property('parent', '');
     expect(doc).to.has.property('size', 0);
     expect(doc).to.has.property('updatedAt');
+
+    // put file
+    const res5 = await broker.put('driver.fs.upload', {
+      id: doc._id,
+      data: 'Hello World',
+      schema,
+    });
+    expect(res5).to.be.eq(true);
+
+    // download file
+    const res6 = await broker.get('driver.fs.download', { id: doc._id, schema });
+    const content = readFileSync(res6);
+    expect(content.toString()).to.be.eq('Hello World');
 
 
     // no name file
@@ -83,7 +96,17 @@ describe('fs driver test', () => {
     expect(doc3).to.has.property('updatedAt');
 
     docId = doc3._id;
+
+    // put file
+    const res4 = await broker.put('driver.fs.upload', {
+      id: doc3._id,
+      data: join(__dirname, './index.test.js'),
+      schema,
+    });
+    expect(res4).to.be.eq(true);
   });
+
+  return;
 
   it('should find doc', async () => {
     // create list
