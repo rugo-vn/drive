@@ -186,8 +186,7 @@ export const update = async function ({ collection, query = {}, set = {} }) {
       fs.mkdirSync(newParentFullPath, { recursive: true });
     }
 
-    if (docFullPath !== newDocFullPath)
-      fs.renameSync(docFullPath, newDocFullPath);
+    if (docFullPath !== newDocFullPath) { fs.renameSync(docFullPath, newDocFullPath); }
 
     if (newData !== undefined) {
       await FileCursor(newData).copyTo(newDocFullPath);
