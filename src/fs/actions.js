@@ -1,14 +1,13 @@
 import fs from 'fs';
 import { join, parse } from 'path';
-import { copyFile } from 'node:fs/promises';
 
-import { RugoException } from '@rugo-vn/service';
 import Mime from 'mime';
+import { RugoException, FileCursor } from '@rugo-vn/service';
+import { ascend, compose, descend, filter, keys, map, mergeDeepLeft, pipe, prop, sortWith, whereEq } from 'ramda';
 
 import { ValidationError } from '../exception.js';
 import { FsId } from './fsid.js';
 import { DIRECTORY_MIME, generateId } from '../utils.js';
-import { ascend, compose, descend, filter, keys, map, mergeDeepLeft, pipe, prop, sortWith, whereEq } from 'ramda';
 
 const get = async function ({ collection, id }) {
   id = FsId(id);
@@ -34,6 +33,7 @@ const get = async function ({ collection, id }) {
     mime,
     parent: parentId,
     size: isDir ? 0 : stats.size,
+    data: isDir ? null : new FileCursor(docFullPath),
     updatedAt: stats.mtime
   };
 };
@@ -61,12 +61,13 @@ export const create = async function ({ collection, data = {} }) {
   }
 
   // create file or directory
-  const mime = data.mime;
+  const { mime, data: fileData } = data;
   if (mime === DIRECTORY_MIME) {
     fs.mkdirSync(docFullPath, { recursive: true });
+  } else if (!fileData) {
+    fs.closeSync(fs.openSync(docFullPath, 'w'));
   } else {
-    const fd = fs.openSync(docFullPath, 'w');
-    fs.closeSync(fd);
+    await FileCursor(fileData).copyTo(docFullPath);
   }
 
   return get.bind(this)({ collection, id });
@@ -162,6 +163,7 @@ export const update = async function ({ collection, query = {}, set = {} }) {
   for (const doc of ls) {
     const newParent = set.parent === undefined ? FsId(doc.parent) : FsId(set.parent);
     const newName = set.name || doc.name;
+    const newData = set.data || undefined;
     const newParentPath = newParent.toPath();
 
     const id = FsId(doc._id);
@@ -184,7 +186,13 @@ export const update = async function ({ collection, query = {}, set = {} }) {
       fs.mkdirSync(newParentFullPath, { recursive: true });
     }
 
-    fs.renameSync(docFullPath, newDocFullPath);
+    if (docFullPath !== newDocFullPath)
+      fs.renameSync(docFullPath, newDocFullPath);
+
+    if (newData !== undefined) {
+      await FileCursor(newData).copyTo(newDocFullPath);
+    }
+
     no++;
   }
 
@@ -206,28 +214,3 @@ export const remove = async function ({ collection, query = {} }) {
 
   return no;
 };
-
-export const upload = async function({ id, collection, path: tmpPath }) {
-  const doc = await get.bind(this)({ collection, id });
-
-  if (!doc || doc.mime === DIRECTORY_MIME)
-    throw new RugoException('Wrong file for upload');
-
-  const dstPath = doc._id.toPath();
-  const fullDstPath = join(this.settings.root, collection, dstPath);
-  
-  await copyFile(tmpPath, fullDstPath, 0);
-
-  return true;
-}
-
-export const download = async function({ id, collection }) {
-  const doc = await get.bind(this)({ collection, id });
-
-  if (!doc || doc.mime === DIRECTORY_MIME)
-    throw new RugoException('Wrong file for download');
-
-  const fullPath = join(this.settings.root, collection, doc._id.toPath());
-
-  return fullPath;
-}
