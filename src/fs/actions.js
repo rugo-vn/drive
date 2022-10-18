@@ -2,11 +2,10 @@ import fs from 'fs';
 import { join, parse } from 'path';
 
 import Mime from 'mime';
-import { RugoException, FileCursor } from '@rugo-vn/service';
+import { RugoException, FileCursor, FsId } from '@rugo-vn/service';
 import { ascend, compose, descend, filter, keys, map, mergeDeepLeft, pipe, prop, sortWith, whereEq } from 'ramda';
 
 import { ValidationError } from '../exception.js';
-import { FsId } from './fsid.js';
 import { DIRECTORY_MIME, generateId } from '../utils.js';
 
 const get = async function ({ collection, id }) {

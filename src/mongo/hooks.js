@@ -107,8 +107,6 @@ export const error = {
     const schemaErrors = path(['errInfo', 'details', 'schemaRulesNotSatisfied'], originErr);
 
     if (schemaErrors) {
-      // console.log(JSON.stringify(schemaErrors, 0, 2));
-
       throw parseSchemaErrors(schemaErrors);
     }
 
