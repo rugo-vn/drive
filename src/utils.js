@@ -1,4 +1,5 @@
 import { customAlphabet } from 'nanoid';
+import { curry } from 'ramda';
 
 const MAX_TIME = 99999999999999;
 export const ID_TIME_SIZE = MAX_TIME.toString(36).length;
@@ -43,3 +44,11 @@ const now = () => {
 export const generateId = () => {
   return ID_PREFIX + align(now().toString(36), ID_TIME_SIZE, '0') + nanoid();
 };
+
+export const matchRegex = curry((r, v) => {
+  if (!(r instanceof RegExp)) {
+    r = new RegExp(r, 'i');
+  }
+
+  return r.test(v);
+});

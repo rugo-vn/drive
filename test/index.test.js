@@ -10,9 +10,10 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import rimraf from 'rimraf';
 
 import { ValidationError } from '../src/exception.js';
+import { clone } from 'ramda';
 
 const drivers = ['mongo', 'mem'];
-const schema = {
+const DEFAULT_SCHEMA = {
   _name: 'demo',
   _uniques: ['name'],
   _indexes: ['name'],
@@ -29,7 +30,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 describe('driver test', () => {
   const root = join(__dirname, '.cache');
-  let mongod, broker;
+  let mongod, broker, schema;
 
   before(async () => {
     // fs
@@ -69,6 +70,10 @@ describe('driver test', () => {
   for (let driverName of drivers){
     describe(`Common test ${driverName} driver`, () => {
       let docId;
+
+      it('should start', async () => {
+        schema = clone(DEFAULT_SCHEMA);
+      });
 
       it('should create a doc', async () => {
         const doc = await broker.call(`driver.${driverName}.create`, {data: {
@@ -120,6 +125,13 @@ describe('driver test', () => {
         docId = doc._id;
       });
 
+      it('should search docs', async () => {
+        const doc = (await broker.call(`driver.${driverName}.find`, { search: 'foo', schema }))[0];
+
+        expect(doc).to.has.property('name', 'foo');
+        expect(doc).to.has.property('age', 3);
+      });
+
       it('should count doc', async () => {
         const no = await broker.call(`driver.${driverName}.count`, { query: { name: 'foo' }, schema });
 
@@ -155,28 +167,30 @@ describe('driver test', () => {
         const no = await broker.call(`driver.${driverName}.remove`, { query: { _id: docId } , schema });
         expect(no).to.be.eq(1);
       });
+
+      it('should update schema and create', async () => {
+        schema._uniques = [];
+        schema.properties.age.minimum = 3;
+  
+        const doc = await broker.call(`driver.${driverName}.create`, {data: {
+          name: 'foo bar zero two',
+          age: 4
+        }, schema });
+  
+        expect(doc).to.has.property('name', 'foo bar zero two');
+        expect(doc).to.has.property('age', 4);
+  
+  
+        const doc2 = (await broker.call(`driver.${driverName}.find`, { search: 'BAR', schema }))[0];
+  
+        expect(doc2).to.has.property('name', 'foo bar zero two');
+        expect(doc2).to.has.property('age', 4);
+      });
     });
   }
 
   // driver.mongo only
   describe('Test driver.mongo only', () => {
-    it('should update schema and create', async () => {
-      schema._uniques = [];
-      schema.properties.age.minimum = 3;
-
-      const doc = await broker.call(`driver.mongo.create`, {data: {
-        name: 'foo bar zero two',
-        age: 4
-      }, schema });
-
-      expect(doc).to.has.property('name', 'foo bar zero two');
-      expect(doc).to.has.property('age', 4);
-
-
-      const doc2 = (await broker.call(`driver.mongo.find`, { query: { $text: { $search: 'bar' }}, schema }))[0];
-
-      expect(doc2).to.has.property('name', 'foo bar zero two');
-      expect(doc2).to.has.property('age', 4);
-    });
+    
   });
 });

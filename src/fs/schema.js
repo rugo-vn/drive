@@ -4,6 +4,6 @@ export const schema = {
     mime: { type: 'string' },
     parent: { type: 'string' },
     size: { type: 'number' },
-    updatedAt: { type: 'string' },
+    updatedAt: { type: 'string' }
   }
-}
+};

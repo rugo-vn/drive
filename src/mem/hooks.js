@@ -18,6 +18,7 @@ export const before = {
 
     // indexes
     args.uniques = schema._uniques || [];
+    args.indexes = schema._indexes || [];
 
     // clean
     for (const key in schema) {

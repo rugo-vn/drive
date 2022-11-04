@@ -1,5 +1,23 @@
 import { RugoException } from '@rugo-vn/service';
 import { ObjectId } from 'mongodb';
+import { union } from 'ramda';
+
+const buildQuery = ({ query = {}, search, indexes, uniques }) => {
+  if (query._id) { query._id = ObjectId(query._id); }
+  if (search) {
+    query = {
+      $and: [
+        query,
+        {
+          $or: union(indexes, uniques)
+            .map(v => ({ [v]: { $regex: new RegExp(search, 'i') } }))
+        }
+      ]
+    };
+  }
+
+  return query;
+};
 
 export const create = async function ({ collection, data }) {
   const res = await collection.insertOne(data);
@@ -9,8 +27,10 @@ export const create = async function ({ collection, data }) {
   return await collection.findOne({ _id: res.insertedId });
 };
 
-export const find = async function ({ collection, query = {}, sort, skip, limit }) {
-  if (query._id) { query._id = ObjectId(query._id); }
+export const find = async function (args) {
+  const { collection, sort } = args;
+  const query = buildQuery(args);
+  let { skip, limit } = args;
 
   // find many
   let queryBuilder = collection.find(query);
@@ -32,7 +52,10 @@ export const find = async function ({ collection, query = {}, sort, skip, limit 
   return await queryBuilder.toArray();
 };
 
-export const count = async function ({ collection, query }) {
+export const count = async function (args) {
+  const { collection } = args;
+  const query = buildQuery(args);
+
   return await collection.countDocuments(query);
 };
 

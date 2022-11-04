@@ -1,9 +1,45 @@
-import { keys, ascend, compose, descend, drop, filter, map, mergeDeepLeft, pipe, prop, sortWith, take, whereEq, count as _count, path, forEach, length } from 'ramda';
+import {
+  keys,
+  ascend,
+  compose,
+  descend,
+  drop,
+  filter,
+  map,
+  mergeDeepLeft,
+  pipe,
+  prop,
+  sortWith,
+  take,
+  whereEq,
+  path,
+  forEach,
+  length,
+  whereAny,
+  union
+} from 'ramda';
 
 import { ValidationError } from '../exception.js';
-import { generateId } from '../utils.js';
+import { generateId, matchRegex } from '../utils.js';
 
-export const find = async function ({ collection, query = {}, sort, skip, limit }) {
+const buildQuery = ({ query = {}, search, indexes, uniques, searches }) => {
+  const pipeline = [];
+
+  pipeline.push(filter(whereEq(query)));
+
+  if (search) {
+    pipeline.push(filter(whereAny(
+      union(indexes, uniques, searches)
+        .reduce((o, v) => ({ ...o, [v]: matchRegex(search) }), {})
+    )));
+  }
+
+  return pipeline;
+};
+
+export const find = async function (args) {
+  const { collection, sort } = args;
+  let { skip, limit } = args;
   const pipeline = [];
 
   if (sort) {
@@ -17,7 +53,7 @@ export const find = async function ({ collection, query = {}, sort, skip, limit 
     );
   }
 
-  pipeline.push(filter(whereEq(query)));
+  pipeline.push(...buildQuery(args));
 
   skip = parseInt(skip);
   if (!isNaN(skip)) { pipeline.push(drop(skip)); }
@@ -28,8 +64,13 @@ export const find = async function ({ collection, query = {}, sort, skip, limit 
   return pipe(...pipeline)(collection.data);
 };
 
-export const count = async function ({ collection, query = {} }) {
-  return _count(whereEq(query))(collection.data);
+export const count = async function (args) {
+  const { collection } = args;
+
+  const pipeline = buildQuery(args);
+  pipeline.push(length);
+
+  return pipe(...pipeline)(collection.data);
 };
 
 export const create = async function ({ collection, schema, data = {}, uniques = [] }) {

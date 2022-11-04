@@ -18,6 +18,10 @@ export const before = {
     const uniques = schema._uniques || [];
     const indexes = schema._indexes || [];
 
+    args.searches = searches;
+    args.uniques = uniques;
+    args.indexes = indexes;
+
     // clean
     for (const key in schema) {
       if (key[0] === '_') { delete schema[key]; }

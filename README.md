@@ -90,6 +90,7 @@ Arguments:
 - `limit` (type: `number`) limit document returned.
 - `sort` (type: `object`) sort by field. (Ex: `sort: { 'nameAsc': 1, 'nameDesc': -1 }`).
 - `skip` (type: `number`) skip amount of doc.
+- `search` (type: `string`) search with text.
 
 Return: 
 
