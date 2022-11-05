@@ -88,7 +88,7 @@ export const find = async function ({ collection, query = {}, sort, skip, limit 
       results.push(await get.bind(this)({ collection, id: query._id }));
     } catch (_) {}
   } else {
-    const ls = fs.readdirSync(parentFullPath);
+    const ls = fs.existsSync(parentFullPath) ? fs.readdirSync(parentFullPath) : [];
     for (const name of ls) {
       const doc = await get.bind(this)({ collection, id: FsId.fromPath(join(parentPath, name)) });
       results.push(doc);
