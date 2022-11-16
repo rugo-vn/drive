@@ -1,8 +1,8 @@
-import fs from 'fs';
-import { join, parse } from 'path';
+import fs, { existsSync } from 'fs';
+import { basename, dirname, join, parse } from 'path';
 
 import Mime from 'mime';
-import { RugoException, FileCursor, FsId } from '@rugo-vn/service';
+import { RugoException, FileCursor, FsId, exec } from '@rugo-vn/service';
 import { ascend, compose, descend, filter, keys, map, mergeDeepLeft, pipe, prop, sortWith, whereEq } from 'ramda';
 
 import { ValidationError } from '../exception.js';
@@ -211,4 +211,30 @@ export const remove = async function ({ collection, query = {} }) {
   }
 
   return no;
+};
+
+export const extract = async function ({ collection, id }) {
+  const idPath = FsId(id).toPath();
+  const docFullPath = join(this.settings.root, collection, idPath);
+  const zipDir = dirname(docFullPath);
+  const srcName = basename(docFullPath, '.zip');
+
+  if (existsSync(join(zipDir, `${srcName}`))) { throw new RugoException(`${srcName} existed`); }
+
+  const res = await exec(`cd ${zipDir} && unzip "${srcName}.zip"`);
+
+  return res.stderr ? 'Cannot extract' : 'Extract successfully';
+};
+
+export const compress = async function ({ collection, id }) {
+  const idPath = FsId(id).toPath();
+  const docFullPath = join(this.settings.root, collection, idPath);
+  const zipDir = dirname(docFullPath);
+  const srcName = basename(docFullPath);
+
+  if (existsSync(join(zipDir, `${srcName}.zip`))) { throw new RugoException(`${srcName}.zip existed`); }
+
+  const res = await exec(`cd ${zipDir} && zip -r "${srcName}.zip" "${srcName}"`);
+
+  return res.stderr ? 'Cannot compress' : 'Compress successfully';
 };
