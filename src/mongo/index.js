@@ -15,6 +15,7 @@ export const started = async function () {
     throw new RugoException('Mongo settings was not defined.');
   }
 
+  this.mongoUri = mongoUri;
   this.client = await new Promise((resolve, reject) => {
     MongoClient.connect(mongoUri, { useUnifiedTopology: true }, (err, client) => {
       if (err) {

@@ -1,3 +1,4 @@
+import { exec } from '@rugo-vn/service';
 import {
   keys,
   ascend,
@@ -16,8 +17,10 @@ import {
   forEach,
   length,
   whereAny,
-  union
+  union,
+  join
 } from 'ramda';
+import rimraf from 'rimraf';
 
 import { ValidationError } from '../exception.js';
 import { generateId, matchRegex } from '../utils.js';
@@ -171,4 +174,22 @@ export const remove = async function ({ collection, query = {} }) {
   }
 
   return result;
+};
+
+export const backup = async function ({ register, file }) {
+  const imp = join(this.settings.root, register.name);
+
+  const res = await exec(`cp -r "${imp}" "${file.toString()}"`);
+
+  return res.stderr ? 'Cannot restore' : 'Restore successfully';
+};
+
+export const restore = async function ({ register, file }) {
+  const out = join(this.settings.root, register.name);
+  rimraf.sync(out);
+
+  const res = await exec(`cp -r "${file.toString()}" "${out}"`);
+  await register.collection.read();
+
+  return res.stderr ? 'Cannot restore' : 'Restore successfully';
 };

@@ -7,6 +7,7 @@ import { ascend, compose, descend, filter, keys, map, mergeDeepLeft, pipe, prop,
 
 import { ValidationError } from '../exception.js';
 import { DIRECTORY_MIME, generateId } from '../utils.js';
+import rimraf from 'rimraf';
 
 const get = async function ({ collection, id }) {
   id = FsId(id);
@@ -237,4 +238,21 @@ export const compress = async function ({ collection, id }) {
   const res = await exec(`cd ${zipDir} && zip -r "${srcName}.zip" "${srcName}"`);
 
   return res.stderr ? 'Cannot compress' : 'Compress successfully';
+};
+
+export const backup = async function ({ collection, file }) {
+  const inp = join(this.settings.root, collection);
+
+  const res = await exec(`cp -r "${inp}" "${file.toString()}"`);
+
+  return res.stderr ? 'Cannot backup' : 'Backup successfully';
+};
+
+export const restore = async function ({ collection, file }) {
+  const out = join(this.settings.root, collection);
+  rimraf.sync(out);
+
+  const res = await exec(`cp -r "${file.toString()}" "${out}"`);
+
+  return res.stderr ? 'Cannot restore' : 'Restore successfully';
 };

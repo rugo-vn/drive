@@ -72,6 +72,7 @@ export const before = {
       this.registers[name] = register;
     }
 
+    args.register = register;
     args.collection = register.collection;
   }
 };

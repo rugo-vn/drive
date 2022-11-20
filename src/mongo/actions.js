@@ -1,6 +1,8 @@
-import { RugoException } from '@rugo-vn/service';
+import { basename, resolve } from 'path';
+import { exec, RugoException } from '@rugo-vn/service';
 import { ObjectId } from 'mongodb';
 import { union } from 'ramda';
+import rimraf from 'rimraf';
 
 const buildQuery = ({ query = {}, search, indexes, uniques }) => {
   if (query._id) { query._id = ObjectId(query._id); }
@@ -77,4 +79,24 @@ export const remove = async function ({ collection, query = {} }) {
   const res = await collection.deleteMany(query);
 
   return res.deletedCount;
+};
+
+export const backup = async function ({ register, file }) {
+  const tmpPath = resolve('.tmp', `mongo.${register.name}`);
+
+  const res = await exec(`mongodump --uri="${this.mongoUri}" -c "${register.name}" -o "${tmpPath}"`);
+  await exec(`cd "${tmpPath}/${basename(this.mongoUri)}" && mv "${register.name}.bson" "${file.toString()}"`);
+
+  rimraf.sync(tmpPath);
+
+  return res.stderr ? 'Cannot backup' : 'Backup successfully';
+};
+
+export const restore = async function ({ register, file }) {
+  const tmpPath = resolve('.tmp', `mongo.${register.name}.bson`);
+
+  const res = await exec(`cp "${file.toString()}" "${tmpPath}" && mongorestore --uri="${this.mongoUri}" --collection="${register.name}" "${tmpPath}" --drop`);
+  rimraf.sync(tmpPath);
+
+  return res.stderr ? 'Cannot restore' : 'Restore successfully';
 };

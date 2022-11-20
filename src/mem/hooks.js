@@ -1,7 +1,4 @@
-import { join } from 'path';
-
 import { path } from 'ramda';
-import { Low, JSONFile } from 'lowdb';
 import hash from 'object-hash';
 
 import { ValidationError } from '../exception.js';
@@ -27,21 +24,14 @@ export const before = {
 
     const register = this.registers[name] || {};
     if (register.hashed !== hashed) {
-      const file = join(this.settings.root, name);
-      const adapter = new JSONFile(file);
-      const collection = new Low(adapter);
-
-      await collection.read();
-      collection.data ||= [];
-      await collection.write();
-
       register.name = name;
       register.hashed = hashed;
-      register.collection = collection;
+      register.collection = await this.createCollection(name);
 
       this.registers[name] = register;
     }
 
+    args.register = register;
     args.collection = register.collection;
   }
 };
