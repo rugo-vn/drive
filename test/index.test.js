@@ -9,15 +9,13 @@ import { assert, expect } from 'chai';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import rimraf from 'rimraf';
 
-import { ValidationError } from '../src/exception.js';
-import { clone } from 'ramda';
+import { ValidationError } from '@rugo-vn/exception';
+import { clone, indexBy } from 'ramda';
 
 const drivers = ['mongo', 'mem'];
 const DEFAULT_SCHEMA = {
-  _name: 'demo',
-  _uniques: ['name'],
-  _indexes: ['name'],
-  _searches: ['name'],
+  name: 'demo',
+  uniques: ['name'],
   type: 'object',
   properties: {
     name: { type: 'string' },
@@ -48,11 +46,28 @@ describe('driver test', () => {
         './src/mongo/index.js',
         './src/mem/index.js'
       ],
+      _globals: {
+        ...indexBy(i => `schema.${i.name}`)([clone(DEFAULT_SCHEMA)]),
+      },
       driver: {
         mongo: mongod.getUri(),
         mem: root,
-      }
+      },
     });
+
+    broker.createService({
+      name: 'test',
+      actions: {
+        updateSchema(){
+          const schema = this.globals[`schema.${DEFAULT_SCHEMA.name}`];
+          schema.uniques = [];
+          schema.properties.age.minimum = 3;
+        },
+        restoreSchema() {
+          this.globals[`schema.${DEFAULT_SCHEMA.name}`] = clone(DEFAULT_SCHEMA);
+        }
+      }
+    })
 
     await broker.loadServices();
     await broker.start();
@@ -70,16 +85,14 @@ describe('driver test', () => {
   for (let driverName of drivers){
     describe(`Common test ${driverName} driver`, () => {
       let docId;
-
-      it('should start', async () => {
-        schema = clone(DEFAULT_SCHEMA);
-      });
-
       it('should create a doc', async () => {
-        const doc = await broker.call(`driver.${driverName}.create`, {data: {
-          name: 'foo',
-          age: 3
-        }, schema });
+        const doc = await broker.call(`driver.${driverName}.create`, {
+          name: DEFAULT_SCHEMA.name,
+          data: {
+            name: 'foo',
+            age: 3
+          }
+        });
 
         expect(doc).to.has.property('name', 'foo');
         expect(doc).to.has.property('age', 3);
@@ -87,10 +100,13 @@ describe('driver test', () => {
 
       it('should not create a doc when not meet validation', async () => {
         try {
-          await broker.call(`driver.${driverName}.create`, {data: {
-            name: 'bar',
-            age: -1
-          }, schema });
+          await broker.call(`driver.${driverName}.create`, {
+            name: DEFAULT_SCHEMA.name,
+            data: {
+              name: 'bar',
+              age: -1
+            }
+          });
           assert.fail('should error')
         } catch(errs) {
           expect(errs[0] instanceof ValidationError).to.be.eq(true);
@@ -98,9 +114,12 @@ describe('driver test', () => {
         }
 
         try {
-          await broker.call(`driver.${driverName}.create`, {data: {
-            name: 'foo'
-          }, schema });
+          await broker.call(`driver.${driverName}.create`, {
+            name: DEFAULT_SCHEMA.name, 
+            data: {
+              name: 'foo'
+            }
+          });
           assert.fail('should error')
         } catch(errs) {
           expect(errs[0] instanceof ValidationError).to.be.eq(true);
@@ -108,7 +127,10 @@ describe('driver test', () => {
         }
 
         try {
-          await broker.call(`driver.${driverName}.create`, {data: {}, schema });
+          await broker.call(`driver.${driverName}.create`, {
+            name: DEFAULT_SCHEMA.name,
+            data: {}
+          });
           assert.fail('should error')
         } catch(errs) {
           expect(errs[0] instanceof ValidationError).to.be.eq(true);
@@ -117,7 +139,10 @@ describe('driver test', () => {
       });
 
       it('should find a doc', async () => {
-        const doc = (await broker.call(`driver.${driverName}.find`, { query: { name: 'foo' }, schema }))[0];
+        const doc = (await broker.call(`driver.${driverName}.find`, {
+          name: DEFAULT_SCHEMA.name,
+          query: { name: 'foo' }
+        }))[0];
 
         expect(doc).to.has.property('name', 'foo');
         expect(doc).to.has.property('age', 3);
@@ -126,71 +151,95 @@ describe('driver test', () => {
       });
 
       it('should search docs', async () => {
-        const doc = (await broker.call(`driver.${driverName}.find`, { search: 'foo', schema }))[0];
+        const doc = (await broker.call(`driver.${driverName}.find`, {
+          name: DEFAULT_SCHEMA.name,
+          search: 'foo',
+        }))[0];
 
         expect(doc).to.has.property('name', 'foo');
         expect(doc).to.has.property('age', 3);
       });
 
       it('should count doc', async () => {
-        const no = await broker.call(`driver.${driverName}.count`, { query: { name: 'foo' }, schema });
+        const no = await broker.call(`driver.${driverName}.count`, {
+          name: DEFAULT_SCHEMA.name,
+          query: { name: 'foo' },
+        });
 
         expect(no).to.be.eq(1);
       });
 
       it('should update doc', async () => {
-        const no = await broker.call(`driver.${driverName}.update`, { query: { _id: docId }, set: { age: 4 } , schema });
+        const no = await broker.call(`driver.${driverName}.update`, {
+          name: DEFAULT_SCHEMA.name,
+          query: { _id: docId },
+          set: { age: 4 }
+        });
         expect(no).to.be.eq(1);
 
-        const doc = (await broker.call(`driver.${driverName}.find`, { query: { _id: docId }, schema }))[0];
+        const doc = (await broker.call(`driver.${driverName}.find`, {
+          name: DEFAULT_SCHEMA.name,
+          query: { _id: docId }
+        }))[0];
 
         expect(doc).to.has.property('name', 'foo');
         expect(doc).to.has.property('age', 4);
-      });
+      });      
 
-      it('should not update doc', async () => {
-        try {
-          await broker.call(`driver.${driverName}.update`, { query: { _id: docId }, inc: { age: -10 } , schema });
-          assert.fail('should error');
-        } catch(errs) {
-          expect(errs[0] instanceof ValidationError).to.be.eq(true);
-          expect(errs[0]).to.has.property('detail', 'Value -6 is out of minimum range 0');
-        }
+      // it('should not update doc', async () => {
+      //   try {
+      //     await broker.call(`driver.${driverName}.update`, {
+      //       name: DEFAULT_SCHEMA.name,
+      //       query: { _id: docId },
+      //       inc: { age: -10 }
+      //     });
+      //     assert.fail('should error');
+      //   } catch(errs) {
+      //     expect(errs[0] instanceof ValidationError).to.be.eq(true);
+      //     expect(errs[0]).to.has.property('detail', 'Value -6 is out of minimum range 0');
+      //   }
 
-        const doc = (await broker.call(`driver.${driverName}.find`, { query: { _id: docId }, schema }))[0];
+      //   const doc = (await broker.call(`driver.${driverName}.find`, {
+      //     name: DEFAULT_SCHEMA.name,
+      //     query: { _id: docId }
+      //   }))[0];
 
-        expect(doc).to.has.property('name', 'foo');
-        expect(doc).to.has.property('age', 4);
-      });
+      //   expect(doc).to.has.property('name', 'foo');
+      //   expect(doc).to.has.property('age', 4);
+      // });
 
       it('should remove doc', async () => {
-        const no = await broker.call(`driver.${driverName}.remove`, { query: { _id: docId } , schema });
+        const no = await broker.call(`driver.${driverName}.remove`, {
+          name: DEFAULT_SCHEMA.name,
+          query: { _id: docId }
+        });
         expect(no).to.be.eq(1);
       });
 
       it('should update schema and create', async () => {
-        schema._uniques = [];
-        schema.properties.age.minimum = 3;
+        await broker.call(`test.updateSchema`);
   
-        const doc = await broker.call(`driver.${driverName}.create`, {data: {
-          name: 'foo bar zero two',
-          age: 4
-        }, schema });
+        const doc = await broker.call(`driver.${driverName}.create`, {
+          name: DEFAULT_SCHEMA.name,
+          data: {
+            name: 'foo bar zero two',
+            age: 4
+          }
+        });
   
         expect(doc).to.has.property('name', 'foo bar zero two');
         expect(doc).to.has.property('age', 4);
+
+        await broker.call(`test.restoreSchema`);
   
+        // const doc2 = (await broker.call(`driver.${driverName}.find`, {
+        //   name: DEFAULT_SCHEMA.name,
+        //   search: 'BAR',
+        // }))[0];
   
-        const doc2 = (await broker.call(`driver.${driverName}.find`, { search: 'BAR', schema }))[0];
-  
-        expect(doc2).to.has.property('name', 'foo bar zero two');
-        expect(doc2).to.has.property('age', 4);
+        // expect(doc2).to.has.property('name', 'foo bar zero two');
+        // expect(doc2).to.has.property('age', 4);
       });
     });
   }
-
-  // driver.mongo only
-  describe('Test driver.mongo only', () => {
-    
-  });
 });

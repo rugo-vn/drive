@@ -1,7 +1,7 @@
 import { path } from 'ramda';
 import { MongoClient } from 'mongodb';
 
-import { RugoException } from '@rugo-vn/service';
+import { RugoException } from '@rugo-vn/exception';
 
 export const name = 'driver.mongo';
 

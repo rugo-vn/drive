@@ -1,5 +1,6 @@
 import { basename, resolve } from 'path';
-import { exec, RugoException } from '@rugo-vn/service';
+import { exec } from '@rugo-vn/service';
+import { RugoException } from '@rugo-vn/exception';
 import { ObjectId } from 'mongodb';
 import { union } from 'ramda';
 import rimraf from 'rimraf';
@@ -21,7 +22,7 @@ const buildQuery = ({ query = {}, search, indexes, uniques }) => {
   return query;
 };
 
-export const create = async function ({ collection, data }) {
+export const create = async function ({ register: { value: collection }, data }) {
   const res = await collection.insertOne(data);
 
   if (!res.insertedId) { throw new RugoException('Can not create a doc'); }
@@ -30,7 +31,7 @@ export const create = async function ({ collection, data }) {
 };
 
 export const find = async function (args) {
-  const { collection, sort } = args;
+  const { register: { value: collection }, sort } = args;
   const query = buildQuery(args);
   let { skip, limit } = args;
 
@@ -55,13 +56,13 @@ export const find = async function (args) {
 };
 
 export const count = async function (args) {
-  const { collection } = args;
+  const { register: { value: collection } } = args;
   const query = buildQuery(args);
 
   return await collection.countDocuments(query);
 };
 
-export const update = async function ({ collection, query = {}, set, unset, inc }) {
+export const update = async function ({ register: { value: collection }, query = {}, set, unset, inc }) {
   if (query._id) { query._id = ObjectId(query._id); }
 
   const res = await collection.updateMany(query, {
@@ -73,7 +74,7 @@ export const update = async function ({ collection, query = {}, set, unset, inc 
   return res.matchedCount;
 };
 
-export const remove = async function ({ collection, query = {} }) {
+export const remove = async function ({ register: { value: collection }, query = {} }) {
   if (query._id) { query._id = ObjectId(query._id); }
 
   const res = await collection.deleteMany(query);

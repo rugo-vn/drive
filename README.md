@@ -17,6 +17,11 @@ const settings = {
     mongo: /* mongo db connection string */,
     mem: /* root directory */,
     fs: /* root directory */,
+  },
+
+  /* you can pass schemas directly by */
+  _globals: {
+    'schema.<name>': /* sth */,
   }
 }
 ```
@@ -25,32 +30,15 @@ const settings = {
 
 ### Input Args
 
-These services shared same action structure and have `schema` argument as required, the returned below will be wrapped by response format in the next section.
+- These services shared same action structure and have `name` argument, which is a schema's name, as required. Then, it will take `schema` from `globals` (shared between services).
+- The schema will be transform and validate by `@rugo-vn/schema`.
 
 ### Schema
 
-Service can use schema for validation. Following [JSON Schema](https://json-schema.org/) with additions in the root:
+We have some additions root attribute in schema.
 
-| Name | `driver.mongo` | `driver.mem` | `driver.fs` |
-|-|-|-|-|
-| `_name` | Collection name | File name | Directory name |
-| `_indexes` | Yes | No | No |
-| `_searches` | Yes | No | No |
-| `_uniques` | Yes | Yes | No |
-
-```js
-{
-  _name: 'collectionName',
-  _searches: ['fieldNameA'],
-  _indexes: ['fieldNameB'],
-  _uniques: ['fieldNameC'],
-}
-```
-
-_Note:_
-
-- All system fields (with underscore prefix) will be removed when passed to deeper step.
-- `fs` driver should have `_name` only.
+- `name`: Name of schema, it will compare with `name` argument.
+- `uniques`: Array of root properties need to be unique.
 
 ### Fs Doc
 
@@ -63,21 +51,6 @@ _Note:_
   data: /* file cursor to file */,
   updatedAt: /* mtime */
 }
-```
-
-### FsId
-
-This is a special encoded identity for `fs` driver to determine a file or a directory.
-
-```js
-id = FsId('<your_encoded_id>'); /* returned FsId object */
-
-/* from path */
-
-id = FsId.fromPath('<your_origin_path>'); /* path that excluded root */
-
-/* to path */
-filePath = id.toPath();
 ```
 
 ## Actions

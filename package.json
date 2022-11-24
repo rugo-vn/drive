@@ -28,8 +28,8 @@
   },
   "dependencies": {
     "@rugo-vn/service": "../service",
-    "ajv": "^8.11.0",
-    "ajv-formats": "^2.1.1",
+    "@rugo-vn/schema": "../schema",
+    "@rugo-vn/exception": "../exception",
     "colors": "^1.4.0",
     "lowdb": "^3.0.0",
     "mime": "^3.0.0",

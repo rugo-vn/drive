@@ -13,7 +13,6 @@ import {
   sortWith,
   take,
   whereEq,
-  path,
   forEach,
   length,
   whereAny,
@@ -22,7 +21,7 @@ import {
 } from 'ramda';
 import rimraf from 'rimraf';
 
-import { ValidationError } from '../exception.js';
+import { ValidationError } from '@rugo-vn/exception';
 import { generateId, matchRegex } from '../utils.js';
 
 const buildQuery = ({ query = {}, search, indexes, uniques, searches }) => {
@@ -41,7 +40,7 @@ const buildQuery = ({ query = {}, search, indexes, uniques, searches }) => {
 };
 
 export const find = async function (args) {
-  const { collection, sort } = args;
+  const { register: { value: collection }, sort } = args;
   let { skip, limit } = args;
   const pipeline = [];
 
@@ -68,7 +67,7 @@ export const find = async function (args) {
 };
 
 export const count = async function (args) {
-  const { collection } = args;
+  const { register: { value: collection } } = args;
 
   const pipeline = buildQuery(args);
   pipeline.push(length);
@@ -76,25 +75,16 @@ export const count = async function (args) {
   return pipe(...pipeline)(collection.data);
 };
 
-export const create = async function ({ collection, schema, data = {}, uniques = [] }) {
+export const create = async function ({ register, data = {}, uniques = [] }) {
+  const { value: collection } = register;
   const newDoc = mergeDeepLeft({ _id: generateId() }, data);
 
   // check uniques
   for (const field of ['_id', ...uniques]) {
-    const no = await count({ collection, query: { [field]: newDoc[field] } });
+    const no = await count({ register, query: { [field]: newDoc[field] } });
     if (no !== 0) {
       throw new ValidationError(`Duplicate unique value "${newDoc[field]}"`);
     }
-  }
-
-  // validate schema
-  const validate = this.ajv.compile(schema);
-
-  if (!validate(newDoc)) {
-    throw validate.errors.map(raw => {
-      raw.value = path(raw.instancePath.split('/').filter(i => i), newDoc);
-      return raw;
-    });
   }
 
   // create new doc
@@ -104,15 +94,14 @@ export const create = async function ({ collection, schema, data = {}, uniques =
   return newDoc;
 };
 
-export const update = async function ({ collection, schema, query = {}, set, unset, inc }) {
+export const update = async function ({ register: { value: collection }, query = {}, set, unset, inc }) {
   const pipeline = [filter(whereEq(query))];
 
   if (set) {
     pipeline.push(
       forEach(doc => {
+        /* @todo: merge set */
         for (const key in set) {
-          const errs = this.validateProperty(schema, key, set[key]);
-          if (errs.length) { throw errs; }
           doc[key] = set[key];
         }
       })
@@ -122,11 +111,9 @@ export const update = async function ({ collection, schema, query = {}, set, uns
   if (inc) {
     pipeline.push(
       forEach(doc => {
+        /* @todo: validate inc */
         for (const key in inc) {
           if (typeof doc[key] === 'number') {
-            const errs = this.validateProperty(schema, key, doc[key] + inc[key]);
-            if (errs.length) { throw errs; }
-
             doc[key] += inc[key];
           }
         }
@@ -136,13 +123,9 @@ export const update = async function ({ collection, schema, query = {}, set, uns
 
   if (unset) {
     pipeline.push(
+      /* @todo: delete unset */
       forEach(doc => {
         for (const key in unset) {
-          if (schema.required && schema.required.indexOf(key) !== -1) {
-            const errs = [{ keyword: 'required', params: { missingProperty: key } }];
-            throw errs;
-          }
-
           delete doc[key];
         }
       })
@@ -158,7 +141,7 @@ export const update = async function ({ collection, schema, query = {}, set, uns
   return result;
 };
 
-export const remove = async function ({ collection, query = {} }) {
+export const remove = async function ({ register: { value: collection }, query = {} }) {
   const pred = whereEq(query);
 
   let index = 0;
@@ -189,7 +172,7 @@ export const restore = async function ({ register, file }) {
   rimraf.sync(out);
 
   const res = await exec(`cp -r "${file.toString()}" "${out}"`);
-  await register.collection.read();
+  await register.value.read();
 
   return res.stderr ? 'Cannot restore' : 'Restore successfully';
 };

@@ -2,10 +2,10 @@ import fs, { existsSync } from 'fs';
 import { basename, dirname, join, parse } from 'path';
 
 import Mime from 'mime';
-import { RugoException, FileCursor, FsId, exec } from '@rugo-vn/service';
+import { FileCursor, FsId, exec } from '@rugo-vn/service';
+import { RugoException, ValidationError } from '@rugo-vn/exception';
 import { ascend, compose, descend, filter, keys, map, mergeDeepLeft, pipe, prop, sortWith, whereEq } from 'ramda';
 
-import { ValidationError } from '../exception.js';
 import { DIRECTORY_MIME, generateId } from '../utils.js';
 import rimraf from 'rimraf';
 
@@ -38,7 +38,7 @@ const get = async function ({ collection, id }) {
   };
 };
 
-export const create = async function ({ collection, data = {} }) {
+export const create = async function ({ name: collection, data = {} }) {
   const parentId = FsId(data.parent);
   const parentPath = parentId.toPath();
 
@@ -73,7 +73,7 @@ export const create = async function ({ collection, data = {} }) {
   return get.bind(this)({ collection, id });
 };
 
-export const find = async function ({ collection, query = {}, sort, skip, limit }) {
+export const find = async function ({ name: collection, query = {}, sort, skip, limit }) {
   const isDeepFind = query.parent === undefined && query._id === undefined;
 
   const parent = FsId(query.parent);
@@ -139,7 +139,7 @@ export const find = async function ({ collection, query = {}, sort, skip, limit 
       }
 
       const nextLimit = limit - results.length;
-      const newResults = await find.bind(this)({ collection, query: mergeDeepLeft({ parent: doc._id }, query), sort, limit: nextLimit });
+      const newResults = await find.bind(this)({ name: collection, query: mergeDeepLeft({ parent: doc._id }, query), sort, limit: nextLimit });
 
       results = [...results, ...newResults];
 
@@ -150,14 +150,14 @@ export const find = async function ({ collection, query = {}, sort, skip, limit 
   return isNaN(limit) ? results.splice(skip) : results.splice(skip, limit - skip);
 };
 
-export const count = async function ({ collection, query }) {
-  return (await find.bind(this)({ collection, query })).length;
+export const count = async function ({ name, query }) {
+  return (await find.bind(this)({ name, query })).length;
 };
 
-export const update = async function ({ collection, query = {}, set = {} }) {
+export const update = async function ({ name: collection, query = {}, set = {} }) {
   if (Object.keys(set).length === 0) { return 0; }
 
-  const ls = await find.bind(this)({ collection, query });
+  const ls = await find.bind(this)({ name: collection, query });
 
   let no = 0;
   for (const doc of ls) {
@@ -198,8 +198,8 @@ export const update = async function ({ collection, query = {}, set = {} }) {
   return no;
 };
 
-export const remove = async function ({ collection, query = {} }) {
-  const ls = await find.bind(this)({ collection, query });
+export const remove = async function ({ name: collection, query = {} }) {
+  const ls = await find.bind(this)({ name: collection, query });
 
   let no = 0;
   for (const doc of ls) {
@@ -214,7 +214,7 @@ export const remove = async function ({ collection, query = {} }) {
   return no;
 };
 
-export const extract = async function ({ collection, id }) {
+export const extract = async function ({ name: collection, id }) {
   const idPath = FsId(id).toPath();
   const docFullPath = join(this.settings.root, collection, idPath);
   const zipDir = dirname(docFullPath);
@@ -227,7 +227,7 @@ export const extract = async function ({ collection, id }) {
   return res.stderr ? 'Cannot extract' : 'Extract successfully';
 };
 
-export const compress = async function ({ collection, id }) {
+export const compress = async function ({ name: collection, id }) {
   const idPath = FsId(id).toPath();
   const docFullPath = join(this.settings.root, collection, idPath);
   const zipDir = dirname(docFullPath);
@@ -240,7 +240,7 @@ export const compress = async function ({ collection, id }) {
   return res.stderr ? 'Cannot compress' : 'Compress successfully';
 };
 
-export const backup = async function ({ collection, file }) {
+export const backup = async function ({ name: collection, file }) {
   const inp = join(this.settings.root, collection);
 
   const res = await exec(`cp -r "${inp}" "${file.toString()}"`);
@@ -248,7 +248,7 @@ export const backup = async function ({ collection, file }) {
   return res.stderr ? 'Cannot backup' : 'Backup successfully';
 };
 
-export const restore = async function ({ collection, file }) {
+export const restore = async function ({ name: collection, file }) {
   const out = join(this.settings.root, collection);
   rimraf.sync(out);
 

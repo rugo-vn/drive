@@ -1,6 +1,4 @@
-import Ajv from 'ajv';
-import addFormats from 'ajv-formats';
-import { RugoException } from '@rugo-vn/service';
+import { RugoException } from '@rugo-vn/exception';
 import { path } from 'ramda';
 
 export const name = 'driver.mem';
@@ -15,9 +13,6 @@ export const started = function () {
   if (!this.settings.root) {
     throw new RugoException('Mem storage settings was not defined.');
   }
-
-  this.ajv = new Ajv({ removeAdditional: true, useDefaults: true });
-  addFormats(this.ajv);
 
   this.registers = {};
 };
