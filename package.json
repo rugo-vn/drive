@@ -27,15 +27,16 @@
     "mongodb-memory-server": "^8.5.2"
   },
   "dependencies": {
-    "@rugo-vn/service": "../service",
-    "@rugo-vn/schema": "../schema",
     "@rugo-vn/exception": "../exception",
+    "@rugo-vn/schema": "../schema",
+    "@rugo-vn/service": "../service",
     "colors": "^1.4.0",
     "lowdb": "^3.0.0",
     "mime": "^3.0.0",
     "mongodb": "^4.8.1",
     "nanoid": "^3.3.4",
     "object-hash": "^3.0.0",
+    "object-path": "^0.11.8",
     "ramda": "^0.28.0",
     "rimraf": "^3.0.2"
   }

@@ -1,3 +1,5 @@
+import ObjectPath from 'object-path';
+import rimraf from 'rimraf';
 import { exec } from '@rugo-vn/service';
 import {
   keys,
@@ -19,19 +21,20 @@ import {
   union,
   join
 } from 'ramda';
-import rimraf from 'rimraf';
 
 import { ValidationError } from '@rugo-vn/exception';
 import { generateId, matchRegex } from '../utils.js';
+import { Schema } from '@rugo-vn/schema';
+import { removeRequired } from '../common/hooks.js';
 
-const buildQuery = ({ query = {}, search, indexes, uniques, searches }) => {
+const buildQuery = ({ query = {}, search, uniques, searches }) => {
   const pipeline = [];
 
   pipeline.push(filter(whereEq(query)));
 
   if (search) {
     pipeline.push(filter(whereAny(
-      union(indexes, uniques, searches)
+      union(uniques, searches)
         .reduce((o, v) => ({ ...o, [v]: matchRegex(search) }), {})
     )));
   }
@@ -94,27 +97,38 @@ export const create = async function ({ register, data = {}, uniques = [] }) {
   return newDoc;
 };
 
-export const update = async function ({ register: { value: collection }, query = {}, set, unset, inc }) {
+export const update = async function ({ register: { value: collection }, schema: raw, query = {}, set, unset, inc }) {
   const pipeline = [filter(whereEq(query))];
 
   if (set) {
     pipeline.push(
       forEach(doc => {
-        /* @todo: merge set */
         for (const key in set) {
-          doc[key] = set[key];
+          ObjectPath.set(doc, key, set[key]);
         }
       })
     );
   }
 
   if (inc) {
+    const nonRequiredSchema = new Schema(Schema.walk(raw, removeRequired));
+
     pipeline.push(
       forEach(doc => {
-        /* @todo: validate inc */
+        // try inc and validate
+        const nextDoc = {};
         for (const key in inc) {
-          if (typeof doc[key] === 'number') {
-            doc[key] += inc[key];
+          const value = ObjectPath.get(doc, key);
+          if (typeof value === 'number') {
+            ObjectPath.set(nextDoc, key, value + inc[key]);
+          }
+        }
+        nonRequiredSchema.validate(nextDoc, false);
+        // do a change
+        for (const key in inc) {
+          const value = ObjectPath.get(doc, key);
+          if (typeof value === 'number') {
+            ObjectPath.set(doc, key, value + inc[key]);
           }
         }
       })
@@ -123,10 +137,9 @@ export const update = async function ({ register: { value: collection }, query =
 
   if (unset) {
     pipeline.push(
-      /* @todo: delete unset */
       forEach(doc => {
         for (const key in unset) {
-          delete doc[key];
+          ObjectPath.del(doc, key);
         }
       })
     );

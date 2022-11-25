@@ -1,9 +1,64 @@
-import { RugoException } from '@rugo-vn/exception';
+import { ajvError, RugoException } from '@rugo-vn/exception';
 import { Schema } from '@rugo-vn/schema';
 import hash from 'object-hash';
+import ObjectPath from 'object-path';
 
-const removeRequired = (keyword, value) => {
+export const removeRequired = (keyword, value) => {
   if (keyword === 'required') { return undefined; }
+
+  return { [keyword]: value };
+};
+
+const mapToObject = (m) => {
+  const o = {};
+  for (const key in m) {
+    ObjectPath.set(o, key, m[key]);
+  }
+  return o;
+};
+
+const objectToMap = (o) => {
+  if (!o || typeof o !== 'object') { return { '': o }; }
+
+  const result = {};
+  for (const key in o) {
+    const value = o[key];
+    const nextObj = objectToMap(value);
+    for (const nextKey in nextObj) {
+      result[`${key}${nextKey ? '.' + nextKey : ''}`] = nextObj[nextKey];
+    }
+  }
+  return result;
+};
+
+const checkRequired = unset => (keyword, value, traces) => {
+  if (keyword !== 'required') { return { [keyword]: value }; }
+
+  const ls = [];
+  for (const v of value) {
+    const nextTraces = [...traces, 'properties', v];
+    let p = '';
+    let i = 1;
+    while (i < nextTraces.length) {
+      if (nextTraces[i - 1] === 'items') {
+        p += '.$';
+        i++;
+        continue;
+      }
+
+      p += '.' + nextTraces[i];
+      i += 2;
+    }
+
+    ls.push(p.substring(1));
+  }
+
+  for (let key in unset) {
+    key = key.replace(/\d+/g, '\$'); // eslint-disable-line
+    if (ls.indexOf(key) !== -1) {
+      throw ajvError({ keyword: 'required', params: { missingProperty: key } });
+    }
+  }
 
   return { [keyword]: value };
 };
@@ -11,6 +66,7 @@ const removeRequired = (keyword, value) => {
 /**
  * Prepare args for next step:
  * - `uniques`
+ * - `searches`
  * - `schema`
  * - `register`
  *
@@ -29,6 +85,7 @@ export const commonAllHook = async function (fn, args) {
   const uniques = schema.uniques || [];
 
   args.uniques = uniques;
+  args.searches = schema.searches || [];
   args.schema = schema;
 
   const register = this.registers[name] || {};
@@ -65,19 +122,14 @@ export const commonUpdateHook = async function (args) {
   const { set, unset, schema: raw } = args;
 
   const schema = new Schema(raw);
-  const finalSchema = schema.toFinal();
 
   if (set) {
     const nonRequiredSchema = new Schema(schema.walk(removeRequired));
-    args.set = nonRequiredSchema.validate(set);
+    const setObj = nonRequiredSchema.validate(mapToObject(set), false);
+    args.set = objectToMap(setObj);
   }
 
   if (unset) {
-    for (const key in unset) {
-      if (finalSchema.required && finalSchema.required.indexOf(key) !== -1) {
-        const errs = [{ keyword: 'required', params: { missingProperty: key } }];
-        throw errs;
-      }
-    }
+    schema.walk(checkRequired(unset));
   }
 };

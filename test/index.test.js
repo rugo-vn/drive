@@ -20,6 +20,26 @@ const DEFAULT_SCHEMA = {
   properties: {
     name: { type: 'string' },
     age: { type: 'number', minimum: 0 },
+    parent: {
+      properties: {
+        foo: 'string',
+        bar: 'string',
+        count: {
+          type: 'number',
+          default: 0,
+          maximum: 100,
+        },
+        complex: {
+          items: {
+            properties: {
+              more: 'string'
+            },
+            required: ['more']
+          }
+        }
+      },
+      required: ['foo']
+    }
   },
   required: ['name'],
 };
@@ -90,7 +110,8 @@ describe('driver test', () => {
           name: DEFAULT_SCHEMA.name,
           data: {
             name: 'foo',
-            age: 3
+            age: 3,
+            parent: { foo: 'a', bar: 'b' }
           }
         });
 
@@ -173,7 +194,8 @@ describe('driver test', () => {
         const no = await broker.call(`driver.${driverName}.update`, {
           name: DEFAULT_SCHEMA.name,
           query: { _id: docId },
-          set: { age: 4 }
+          set: { age: 4, 'parent.foo': 'abc' },
+          inc: { 'parent.count': 1 },
         });
         expect(no).to.be.eq(1);
 
@@ -184,29 +206,68 @@ describe('driver test', () => {
 
         expect(doc).to.has.property('name', 'foo');
         expect(doc).to.has.property('age', 4);
+        expect(doc.parent).to.has.property('foo', 'abc');
+        expect(doc.parent).to.has.property('bar', 'b');
+        expect(doc.parent).to.has.property('count', 1);
       });      
 
-      // it('should not update doc', async () => {
-      //   try {
-      //     await broker.call(`driver.${driverName}.update`, {
-      //       name: DEFAULT_SCHEMA.name,
-      //       query: { _id: docId },
-      //       inc: { age: -10 }
-      //     });
-      //     assert.fail('should error');
-      //   } catch(errs) {
-      //     expect(errs[0] instanceof ValidationError).to.be.eq(true);
-      //     expect(errs[0]).to.has.property('detail', 'Value -6 is out of minimum range 0');
-      //   }
+      it('should not update doc', async () => {
+        try {
+          await broker.call(`driver.${driverName}.update`, {
+            name: DEFAULT_SCHEMA.name,
+            query: { _id: docId },
+            inc: { age: -10 }
+          });
+          assert.fail('should error');
+        } catch(errs) {
+          expect(errs[0] instanceof ValidationError).to.be.eq(true);
+          expect(errs[0]).to.has.property('detail', 'Value -6 is out of minimum range 0');
+        }
 
-      //   const doc = (await broker.call(`driver.${driverName}.find`, {
-      //     name: DEFAULT_SCHEMA.name,
-      //     query: { _id: docId }
-      //   }))[0];
+        try {
+          await broker.call(`driver.${driverName}.update`, {
+            name: DEFAULT_SCHEMA.name,
+            query: { _id: docId },
+            inc: { 'parent.count': 1000 }
+          });
+          assert.fail('should error');
+        } catch(errs) {
+          expect(errs[0] instanceof ValidationError).to.be.eq(true);
+          expect(errs[0]).to.has.property('detail', 'Value 1001 is out of maximum range 100');
+        }
 
-      //   expect(doc).to.has.property('name', 'foo');
-      //   expect(doc).to.has.property('age', 4);
-      // });
+        try {
+          await broker.call(`driver.${driverName}.update`, {
+            name: DEFAULT_SCHEMA.name,
+            query: { _id: docId },
+            unset: { name: 1 }
+          });
+          assert.fail('should error');
+        } catch(errs) {
+          expect(errs[0] instanceof ValidationError).to.be.eq(true);
+          expect(errs[0]).to.has.property('detail', 'Required value for properties "name"');
+        }
+
+        try {
+          await broker.call(`driver.${driverName}.update`, {
+            name: DEFAULT_SCHEMA.name,
+            query: { _id: docId },
+            unset: { 'parent.complex.1.more': 1 }
+          });
+          assert.fail('should error');
+        } catch(errs) {
+          expect(errs[0] instanceof ValidationError).to.be.eq(true);
+          expect(errs[0]).to.has.property('detail', 'Required value for properties "parent.complex.$.more"');
+        }
+
+        const doc = (await broker.call(`driver.${driverName}.find`, {
+          name: DEFAULT_SCHEMA.name,
+          query: { _id: docId }
+        }))[0];
+
+        expect(doc).to.has.property('name', 'foo');
+        expect(doc).to.has.property('age', 4);
+      });
 
       it('should remove doc', async () => {
         const no = await broker.call(`driver.${driverName}.remove`, {
@@ -232,13 +293,13 @@ describe('driver test', () => {
 
         await broker.call(`test.restoreSchema`);
   
-        // const doc2 = (await broker.call(`driver.${driverName}.find`, {
-        //   name: DEFAULT_SCHEMA.name,
-        //   search: 'BAR',
-        // }))[0];
+        const doc2 = (await broker.call(`driver.${driverName}.find`, {
+          name: DEFAULT_SCHEMA.name,
+          search: 'BAR',
+        }))[0];
   
-        // expect(doc2).to.has.property('name', 'foo bar zero two');
-        // expect(doc2).to.has.property('age', 4);
+        expect(doc2).to.has.property('name', 'foo bar zero two');
+        expect(doc2).to.has.property('age', 4);
       });
     });
   }

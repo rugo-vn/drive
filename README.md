@@ -39,6 +39,7 @@ We have some additions root attribute in schema.
 
 - `name`: Name of schema, it will compare with `name` argument.
 - `uniques`: Array of root properties need to be unique.
+- `searches`: Array of root properties need to be search.
 
 ### Fs Doc
 

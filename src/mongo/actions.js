@@ -5,14 +5,14 @@ import { ObjectId } from 'mongodb';
 import { union } from 'ramda';
 import rimraf from 'rimraf';
 
-const buildQuery = ({ query = {}, search, indexes, uniques }) => {
+const buildQuery = ({ query = {}, search, searches, uniques }) => {
   if (query._id) { query._id = ObjectId(query._id); }
   if (search) {
     query = {
       $and: [
         query,
         {
-          $or: union(indexes, uniques)
+          $or: union(searches, uniques)
             .map(v => ({ [v]: { $regex: new RegExp(search, 'i') } }))
         }
       ]

@@ -1,6 +1,13 @@
 import { curry } from 'ramda';
-import { ValidationError } from '@rugo-vn/exception';
+import { mongoError } from '@rugo-vn/exception';
 import { commonAllHook, commonCreateHook, commonUpdateHook } from '../common/hooks.js';
+import { Schema } from '@rugo-vn/schema';
+
+const removeDefault = (keyword, value) => {
+  if (keyword === 'default') { return undefined; }
+
+  return { [keyword]: value };
+};
 
 export const before = {
   all: curry(commonAllHook)(async function (args) {
@@ -10,6 +17,14 @@ export const before = {
     const collection = (await this.db.listCollections().toArray()).map(i => i.name).indexOf(name) === -1
       ? await this.db.createCollection(name)
       : this.db.collection(name);
+
+    // validator
+    await this.db.command({
+      collMod: name,
+      validator: {
+        $jsonSchema: Schema.walk(new Schema(args.schema).toFinal(), removeDefault)
+      }
+    });
 
     // indexes
     const newIndexes = {};
@@ -38,9 +53,6 @@ export const before = {
 
 export const error = {
   all (originErr) {
-    // unique error
-    if (originErr.code === 11000) {
-      throw new ValidationError(`Duplicate unique value "${originErr.keyValue[Object.keys(originErr.keyValue)[0]]}"`);
-    }
+    if (originErr.constructor.name === 'MongoServerError') { throw mongoError(originErr); }
   }
 };
