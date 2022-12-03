@@ -39,6 +39,10 @@ const DEFAULT_SCHEMA = {
         }
       },
       required: ['foo']
+    },
+    schemas: {
+      type: 'array',
+      items: 'json'
     }
   },
   required: ['name'],
@@ -194,7 +198,13 @@ describe('driver test', () => {
         const no = await broker.call(`driver.${driverName}.update`, {
           name: DEFAULT_SCHEMA.name,
           query: { _id: docId },
-          set: { age: 4, 'parent.foo': 'abc' },
+          set: {
+            age: 4,
+            'parent.foo': 'abc',
+            schemas: [
+              { some: 'property', has: 'value' }
+            ]
+          },
           inc: { 'parent.count': 1 },
         });
         expect(no).to.be.eq(1);
@@ -209,7 +219,7 @@ describe('driver test', () => {
         expect(doc.parent).to.has.property('foo', 'abc');
         expect(doc.parent).to.has.property('bar', 'b');
         expect(doc.parent).to.has.property('count', 1);
-      });      
+      });
 
       it('should not update doc', async () => {
         try {

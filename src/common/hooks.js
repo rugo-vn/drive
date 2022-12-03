@@ -17,16 +17,10 @@ const mapToObject = (m) => {
   return o;
 };
 
-const objectToMap = (o) => {
-  if (!o || typeof o !== 'object') { return { '': o }; }
-
+const objectToMap = (o, keys) => {
   const result = {};
-  for (const key in o) {
-    const value = o[key];
-    const nextObj = objectToMap(value);
-    for (const nextKey in nextObj) {
-      result[`${key}${nextKey ? '.' + nextKey : ''}`] = nextObj[nextKey];
-    }
+  for (let key of keys) {
+    result[key] = ObjectPath.get(o, key);
   }
   return result;
 };
@@ -126,7 +120,7 @@ export const commonUpdateHook = async function (args) {
   if (set) {
     const nonRequiredSchema = new Schema(schema.walk(removeRequired));
     const setObj = nonRequiredSchema.validate(mapToObject(set), false);
-    args.set = objectToMap(setObj);
+    args.set = objectToMap(setObj, Object.keys(set));
   }
 
   if (unset) {
