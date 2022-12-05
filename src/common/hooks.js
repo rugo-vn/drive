@@ -2,12 +2,38 @@ import { ajvError, RugoException } from '@rugo-vn/exception';
 import { Schema } from '@rugo-vn/schema';
 import hash from 'object-hash';
 import ObjectPath from 'object-path';
+import slugify from 'slugify';
 
 export const removeRequired = (keyword, value) => {
   if (keyword === 'required') { return undefined; }
 
   return { [keyword]: value };
 };
+
+const fnValue = (data, fn, args) => {
+  switch (fn) {
+    case 'slugify':
+      let from = ObjectPath.get(data, args.from);
+      if (typeof from !== 'string')
+        return;
+
+      return slugify(from, {
+        replacement: '-',
+        lower: true,
+        locale: 'vi',
+      });
+    default:
+      return;
+  }
+}
+
+const createFnDefault = (data = {}) => (keyword, value) => {
+  if (keyword === 'default' && value && typeof value === 'object' && Object.keys(value).some(v => v === 'fn')) {
+    return { [keyword]: fnValue(data, value.fn, value) };
+  }
+  
+  return { [keyword]: value };
+}
 
 const mapToObject = (m) => {
   const o = {};
@@ -101,7 +127,14 @@ export const commonCreateHook = async function (args) {
   const { data, schema: raw } = args;
 
   const schema = new Schema(raw);
-  args.data = schema.validate(data);
+  const fnDefaultSchema = new Schema (schema.walk(createFnDefault(data)));
+
+  const now = new Date().toISOString();
+  data.createdAt ||= now;
+  data.updatedAt ||= now;
+  data.version = 1;
+
+  args.data = fnDefaultSchema.validate(data);
 };
 
 /**
@@ -121,9 +154,13 @@ export const commonUpdateHook = async function (args) {
     const nonRequiredSchema = new Schema(schema.walk(removeRequired));
     const setObj = nonRequiredSchema.validate(mapToObject(set), false);
     args.set = objectToMap(setObj, Object.keys(set));
+    args.set.updatedAt ||= new Date().toISOString();
   }
 
   if (unset) {
     schema.walk(checkRequired(unset));
   }
+
+  args.inc ||= {};
+  args.inc.version ||= 1;
 };

@@ -41,6 +41,16 @@ We have some additions root attribute in schema.
 - `uniques`: Array of root properties need to be unique.
 - `searches`: Array of root properties need to be search.
 
+### Documents
+
+Each document will have some extra properties (except `fs`):
+
+- `createdAt`
+- `updatedAt`
+- `version`
+
+It will hide by default, you can display them in admin when added into schema with `_ref: 'time'`.
+
 ### Fs Doc
 
 ```js
@@ -51,6 +61,21 @@ We have some additions root attribute in schema.
   size: /* file size or 0 if directory */,
   data: /* file cursor to file */,
   updatedAt: /* mtime */
+}
+```
+
+### Default
+
+We provide `fn` to automatic generate default value for schema.
+
+- **`slugify`**
+
+```js
+{
+  default: {
+    fn: 'slugify',
+    from: 'some.property',
+  }
 }
 ```
 

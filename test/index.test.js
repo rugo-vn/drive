@@ -19,6 +19,14 @@ const DEFAULT_SCHEMA = {
   type: 'object',
   properties: {
     name: { type: 'string' },
+    title: 'string',
+    slug: {
+      type: 'string',
+      default: {
+        fn: 'slugify',
+        from: 'title',
+      },
+    },
     age: { type: 'number', minimum: 0 },
     parent: {
       properties: {
@@ -114,13 +122,19 @@ describe('driver test', () => {
           name: DEFAULT_SCHEMA.name,
           data: {
             name: 'foo',
+            title: 'Some Foo Đờ 123 # Go go',
             age: 3,
             parent: { foo: 'a', bar: 'b' }
           }
         });
 
         expect(doc).to.has.property('name', 'foo');
+        expect(doc).to.has.property('title', 'Some Foo Đờ 123 # Go go');
+        expect(doc).to.has.property('slug', 'some-foo-do-123-go-go');
         expect(doc).to.has.property('age', 3);
+        expect(doc).to.has.property('createdAt');
+        expect(doc).to.has.property('updatedAt');
+        expect(doc).to.has.property('version', 1);
       });
 
       it('should not create a doc when not meet validation', async () => {
@@ -219,6 +233,8 @@ describe('driver test', () => {
         expect(doc.parent).to.has.property('foo', 'abc');
         expect(doc.parent).to.has.property('bar', 'b');
         expect(doc.parent).to.has.property('count', 1);
+        expect(doc.createdAt).to.not.be.eq(doc.updatedAt);
+        expect(doc).to.has.property('version', 2);
       });
 
       it('should not update doc', async () => {

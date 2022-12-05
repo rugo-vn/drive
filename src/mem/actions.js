@@ -1,5 +1,6 @@
 import ObjectPath from 'object-path';
 import rimraf from 'rimraf';
+import { join } from 'path';
 import { exec } from '@rugo-vn/service';
 import {
   keys,
@@ -18,8 +19,7 @@ import {
   forEach,
   length,
   whereAny,
-  union,
-  join
+  union
 } from 'ramda';
 
 import { ValidationError } from '@rugo-vn/exception';
