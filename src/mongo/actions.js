@@ -1,6 +1,5 @@
 import { basename, resolve } from 'path';
 import { exec } from '@rugo-vn/service';
-import { RugoException } from '@rugo-vn/exception';
 import { ObjectId } from 'mongodb';
 import { union } from 'ramda';
 import rimraf from 'rimraf';
@@ -24,8 +23,6 @@ const buildQuery = ({ query = {}, search, searches, uniques }) => {
 
 export const create = async function ({ register: { value: collection }, data }) {
   const res = await collection.insertOne(data);
-
-  if (!res.insertedId) { throw new RugoException('Can not create a doc'); }
 
   return await collection.findOne({ _id: res.insertedId });
 };
@@ -62,13 +59,13 @@ export const count = async function (args) {
   return await collection.countDocuments(query);
 };
 
-export const update = async function ({ register: { value: collection }, query = {}, set, unset, inc }) {
+export const update = async function ({ register: { value: collection }, query = {}, set = {}, unset = {}, inc = {} }) {
   if (query._id) { query._id = ObjectId(query._id); }
 
   const res = await collection.updateMany(query, {
-    $set: set || {},
-    $unset: unset || {},
-    $inc: inc || {}
+    $set: set,
+    $unset: unset,
+    $inc: inc
   });
 
   return res.matchedCount;
@@ -85,19 +82,19 @@ export const remove = async function ({ register: { value: collection }, query =
 export const backup = async function ({ register, file }) {
   const tmpPath = resolve('.tmp', `mongo.${register.name}`);
 
-  const res = await exec(`mongodump --uri="${this.mongoUri}" -c "${register.name}" -o "${tmpPath}"`);
+  await exec(`mongodump --uri="${this.mongoUri}" -c "${register.name}" -o "${tmpPath}"`);
   await exec(`cd "${tmpPath}/${basename(this.mongoUri)}" && mv "${register.name}.bson" "${file.toString()}"`);
 
   rimraf.sync(tmpPath);
 
-  return res.stderr ? 'Cannot backup' : 'Backup successfully';
+  return 'Backup successfully';
 };
 
 export const restore = async function ({ register, file }) {
   const tmpPath = resolve('.tmp', `mongo.${register.name}.bson`);
 
-  const res = await exec(`cp "${file.toString()}" "${tmpPath}" && mongorestore --uri="${this.mongoUri}" --collection="${register.name}" "${tmpPath}" --drop`);
+  await exec(`cp "${file.toString()}" "${tmpPath}" && mongorestore --uri="${this.mongoUri}" --collection="${register.name}" "${tmpPath}" --drop`);
   rimraf.sync(tmpPath);
 
-  return res.stderr ? 'Cannot restore' : 'Restore successfully';
+  return 'Restore successfully';
 };

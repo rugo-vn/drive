@@ -12,6 +12,7 @@ import rimraf from 'rimraf';
 import { ValidationError } from '@rugo-vn/exception';
 import { clone, indexBy } from 'ramda';
 
+const DB_NAME = 'test';
 const drivers = ['mongo', 'mem'];
 const DEFAULT_SCHEMA = {
   name: 'demo',
@@ -30,7 +31,7 @@ const DEFAULT_SCHEMA = {
     age: { type: 'number', minimum: 0 },
     parent: {
       properties: {
-        foo: 'string',
+        foo: { type: 'string', default: { fn: 'nofn' } },
         bar: 'string',
         count: {
           type: 'number',
@@ -67,10 +68,12 @@ describe('driver test', () => {
     if (fs.existsSync(root))
       rimraf.sync(root);
 
-    fs.mkdirSync(root, { recursive: true });
-
     // mongo
-    mongod = await MongoMemoryServer.create();
+    mongod = await MongoMemoryServer.create({
+      instance: {
+        dbName: DB_NAME,
+      },
+    });
 
     // create broker
     broker = createBroker({
@@ -82,7 +85,7 @@ describe('driver test', () => {
         ...indexBy(i => `schema.${i.name}`)([clone(DEFAULT_SCHEMA)]),
       },
       driver: {
-        mongo: mongod.getUri(),
+        mongo: `${mongod.getUri()}${DB_NAME}`,
         mem: root,
       },
     });
@@ -113,11 +116,104 @@ describe('driver test', () => {
       rimraf.sync(root);
   });
 
+  it('should require fs root', async () => {
+    const tmpBroker = createBroker({
+      _services: [
+        './src/fs/index.js'
+      ]
+    });
+
+    await tmpBroker.loadServices();
+
+    try {
+      await tmpBroker.start();
+      assert.fail('should error');
+    } catch(err) {
+      expect(err).to.has.property('message', 'Fs storage settings was not defined.');
+    }
+  });
+
+  it('should require mem root', async () => {
+    const tmpBroker = createBroker({
+      _services: [
+        './src/mem/index.js'
+      ]
+    });
+
+    await tmpBroker.loadServices();
+
+    try {
+      await tmpBroker.start();
+      assert.fail('should error');
+    } catch(err) {
+      expect(err).to.has.property('message', 'Mem storage settings was not defined.');
+    }
+  });
+
+  it('should require mongo uri', async () => {
+    const tmpBroker = createBroker({
+      _services: [
+        './src/mongo/index.js'
+      ]
+    });
+
+    await tmpBroker.loadServices();
+
+    try {
+      await tmpBroker.start();
+      assert.fail('should error');
+    } catch(err) {
+      expect(err).to.has.property('message', 'Mongo settings was not defined.');
+    }
+  });
+
+  it('should valid mongo uri', async () => {
+    const tmpBroker = createBroker({
+      _services: [
+        './src/mongo/index.js'
+      ],
+      driver: {
+        mongo: 'wronguri'
+      }
+    });
+
+    await tmpBroker.loadServices();
+
+    try {
+      await tmpBroker.start();
+      assert.fail('should error');
+    } catch(err) {
+      expect(err).to.has.property('message', 'Invalid scheme, expected connection string to start with "mongodb://" or "mongodb+srv://"');
+    }
+  });
+
   // common test
   for (let driverName of drivers){
     describe(`Common test ${driverName} driver`, () => {
       let docId;
+
+      it('should required name', async () => {
+        try {
+          await broker.call(`driver.${driverName}.create`, {});
+          assert.fail('should error');
+        } catch(errs) {
+          expect(errs[0]).to.has.property('message', 'Driver action must have name as required argument.');
+        }
+      });
+
+      it('should required schema', async () => {
+        try {
+          await broker.call(`driver.${driverName}.create`, {
+            name: 'noschema'
+          });
+          assert.fail('should error');
+        } catch(errs) {
+          expect(errs[0]).to.has.property('message', 'Driver action can not find the schema');
+        }
+      });
+
       it('should create a doc', async () => {
+        // single
         const doc = await broker.call(`driver.${driverName}.create`, {
           name: DEFAULT_SCHEMA.name,
           data: {
@@ -135,6 +231,17 @@ describe('driver test', () => {
         expect(doc).to.has.property('createdAt');
         expect(doc).to.has.property('updatedAt');
         expect(doc).to.has.property('version', 1);
+
+        // many
+        for (let i = 0; i < 3; i++) {
+          await broker.call(`driver.${driverName}.create`, {
+            name: DEFAULT_SCHEMA.name,
+            data: {
+              name: 'many_' + i,
+              age: 999,
+            }
+          });
+        }
       });
 
       it('should not create a doc when not meet validation', async () => {
@@ -180,13 +287,23 @@ describe('driver test', () => {
       it('should find a doc', async () => {
         const doc = (await broker.call(`driver.${driverName}.find`, {
           name: DEFAULT_SCHEMA.name,
-          query: { name: 'foo' }
+          query: { name: 'foo' },
+          sort: { createdAt: -1 },
         }))[0];
 
         expect(doc).to.has.property('name', 'foo');
         expect(doc).to.has.property('age', 3);
 
         docId = doc._id;
+
+        const data = await broker.call(`driver.${driverName}.find`, {
+          name: DEFAULT_SCHEMA.name,
+          query: { age: 999 },
+          skip: 1,
+          limit: 1,
+        });
+
+        expect(data).to.has.property('length', 1);
       });
 
       it('should search docs', async () => {
@@ -220,6 +337,7 @@ describe('driver test', () => {
             ]
           },
           inc: { 'parent.count': 1 },
+          unset: { title: true },
         });
         expect(no).to.be.eq(1);
 
@@ -230,6 +348,7 @@ describe('driver test', () => {
 
         expect(doc).to.has.property('name', 'foo');
         expect(doc).to.has.property('age', 4);
+        expect(doc).to.not.has.property('title');
         expect(doc.parent).to.has.property('foo', 'abc');
         expect(doc.parent).to.has.property('bar', 'b');
         expect(doc.parent).to.has.property('count', 1);
@@ -295,12 +414,27 @@ describe('driver test', () => {
         expect(doc).to.has.property('age', 4);
       });
 
+      it('should backup', async () => {
+        const res = await broker.call(`driver.${driverName}.backup`, {
+          name: DEFAULT_SCHEMA.name,
+          file: join(root, '.backup'),
+        });
+  
+        expect(res).to.be.eq('Backup successfully');
+      });
+
       it('should remove doc', async () => {
         const no = await broker.call(`driver.${driverName}.remove`, {
           name: DEFAULT_SCHEMA.name,
           query: { _id: docId }
         });
         expect(no).to.be.eq(1);
+
+        const no2 = await broker.call(`driver.${driverName}.remove`, {
+          name: DEFAULT_SCHEMA.name,
+          query: { age: 999 }
+        });
+        expect(no2).to.be.eq(3);
       });
 
       it('should update schema and create', async () => {
@@ -326,6 +460,22 @@ describe('driver test', () => {
   
         expect(doc2).to.has.property('name', 'foo bar zero two');
         expect(doc2).to.has.property('age', 4);
+      });
+
+      it('should restore', async () => {
+        const res = await broker.call(`driver.${driverName}.restore`, {
+          name: DEFAULT_SCHEMA.name,
+          file: join(root, '.backup'),
+        });
+  
+        expect(res).to.be.eq('Restore successfully');
+
+        const data = await broker.call(`driver.${driverName}.find`, {
+          name: DEFAULT_SCHEMA.name,
+          sort: { createdAt: 1 }
+        });
+
+        expect(data).to.has.property('length', 4);
       });
     });
   }

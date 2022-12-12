@@ -175,17 +175,17 @@ export const remove = async function ({ register: { value: collection }, query =
 export const backup = async function ({ register, file }) {
   const imp = join(this.settings.root, register.name);
 
-  const res = await exec(`cp -r "${imp}" "${file.toString()}"`);
+  await exec(`cp -r "${imp}" "${file.toString()}"`);
 
-  return res.stderr ? 'Cannot restore' : 'Restore successfully';
+  return 'Backup successfully';
 };
 
 export const restore = async function ({ register, file }) {
   const out = join(this.settings.root, register.name);
   rimraf.sync(out);
 
-  const res = await exec(`cp -r "${file.toString()}" "${out}"`);
+  await exec(`cp -r "${file.toString()}" "${out}"`);
   await register.value.read();
 
-  return res.stderr ? 'Cannot restore' : 'Restore successfully';
+  return 'Restore successfully';
 };

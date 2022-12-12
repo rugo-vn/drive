@@ -11,11 +11,11 @@ export * as hooks from './hooks.js';
 export const started = function () {
   this.settings.root = path(['settings', 'driver', 'mem'], this);
 
-  if (!existsSync(this.settings.root)) { mkdirSync(this.settings.root, { recursive: true }); }
-
   if (!this.settings.root) {
     throw new RugoException('Mem storage settings was not defined.');
   }
+
+  if (!existsSync(this.settings.root)) { mkdirSync(this.settings.root, { recursive: true }); }
 
   this.registers = {};
 };

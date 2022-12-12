@@ -4,8 +4,8 @@ import fs, { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
-import { createBroker, FileCursor } from '@rugo-vn/service';
-import { expect } from 'chai';
+import { createBroker, FileCursor, FsId } from '@rugo-vn/service';
+import { expect, assert } from 'chai';
 import rimraf from 'rimraf';
 
 import { DIRECTORY_MIME } from '../src/utils.js';
@@ -24,8 +24,6 @@ describe('fs driver test', () => {
   before(async () => {
     if (fs.existsSync(root))
       rimraf.sync(root);
-
-    fs.mkdirSync(root, { recursive: true });
 
     // create broker
     broker = createBroker({
@@ -49,6 +47,11 @@ describe('fs driver test', () => {
 
     if (fs.existsSync(root))
       rimraf.sync(root);
+  });
+
+  it('should not get doc', async () => {
+    const data = await broker.call(`driver.fs.find`, { name: schema.name, query: { _id: 'notfound' } });
+    expect(data).to.has.property('length', 0);
   });
 
   let docId;
@@ -92,6 +95,20 @@ describe('fs driver test', () => {
     docId = doc3._id;
   });
 
+  it('should not create duplicate', async () => {
+    const { 0: doc } = await broker.call(`driver.fs.find`, { name: schema.name, query: { _id: docId } });
+    try {
+      await broker.call(`driver.fs.create`, { data: {
+        name: 'sample.png', 
+        parent: doc.parent,
+        data: new FileCursor(join(__dirname, 'index.test.js')),
+      }, name: schema.name });
+      assert.fail('should error');
+    } catch (errs) {
+      expect(errs[0]).to.has.property('message', `Duplicate unique value "${FsId(doc.parent).toPath()}/sample.png"`);
+    }
+  });
+
   it('should find doc', async () => {
     // create list
     for (let x = 0; x < 3; x++){
@@ -105,7 +122,7 @@ describe('fs driver test', () => {
     }
 
     // list all
-    const docs = await broker.call(`driver.fs.find`, { limit: 10, skip: 6, name: schema.name });
+    const docs = await broker.call(`driver.fs.find`, { limit: 10, skip: 6, sort: { updatedAt: -1 }, name: schema.name });
 
     expect(docs).to.has.property('length', 10);
   });
@@ -116,11 +133,12 @@ describe('fs driver test', () => {
   });
 
   it('should update docs', async () => {
+    const parent = FsId.fromPath('newparent');
     // single
-    const no = await broker.call(`driver.fs.update`, { query: { _id: docId }, set: { name: 'foo.jpg', parent: '', data: 'Okla' }, name: schema.name });
+    const no = await broker.call(`driver.fs.update`, { query: { _id: docId }, set: { name: 'foo.jpg', parent, data: 'Okla' }, name: schema.name });
     expect(no).to.be.eq(1);
 
-    const docs = await broker.call(`driver.fs.find`, { query: { parent: '', mime: 'image/jpeg' }, name: schema.name });
+    const docs = await broker.call(`driver.fs.find`, { query: { parent, mime: 'image/jpeg' }, name: schema.name });
 
     expect(docs[0]).to.has.property('name', 'foo.jpg');
     expect(docs[0]).to.has.property('mime', 'image/jpeg');
@@ -130,11 +148,67 @@ describe('fs driver test', () => {
     docId = docs[0]._id;
   });
 
-  it('should remove doc', async () => {
+  it('should not update duplicated doc', async () => {
+    const parent = FsId.fromPath('newparent');
+    const doc = await broker.call(`driver.fs.create`, { data: { mime: 'text/plain' }, name: schema.name });
+
+    try {
+      await broker.call(`driver.fs.update`, { query: { _id: doc._id }, set: { name: 'foo.jpg', parent, data: 'Okla' }, name: schema.name });
+      assert.fail('should error');
+    } catch(errs) {
+      expect(errs[0]).to.has.property('message', 'Duplicate unique value "newparent/foo.jpg"');
+    }
+  });
+
+  it('should compress', async () => {
+    const res = await broker.call(`driver.fs.compress`, {
+      name: schema.name,
+      id: docId,
+    });
+
+    expect(res).to.be.eq('Compress successfully');
+  });
+
+  it('should extract', async () => {
     const no = await broker.call(`driver.fs.remove`, { query: { _id: docId }, name: schema.name });
     expect(no).to.be.eq(1);
 
-    const docs = await broker.call(`driver.fs.find`, { query: { parent: '', mime: 'image/jpeg' }, name: schema.name });
+    const res = await broker.call(`driver.fs.extract`, {
+      name: schema.name,
+      id: FsId.fromPath(FsId(docId).toPath() + '.zip'),
+    });
+
+    expect(res).to.be.eq('Extract successfully');
+  });
+
+  it('should backup', async () => {
+    const res = await broker.call(`driver.fs.backup`, {
+      name: schema.name,
+      file: join(root, '.backup'),
+    });
+
+    expect(res).to.be.eq('Backup successfully');
+  });
+
+  it('should remove doc', async () => {
+    const parent = FsId.fromPath('newparent');
+    const no = await broker.call(`driver.fs.remove`, { query: { _id: docId }, name: schema.name });
+    expect(no).to.be.eq(1);
+
+    const docs = await broker.call(`driver.fs.find`, { query: { parent, mime: 'image/jpeg' }, name: schema.name });
     expect(docs).to.has.property('length', 0);
+  });
+
+  it('should restore', async () => {
+    const res = await broker.call(`driver.fs.restore`, {
+      name: schema.name,
+      file: join(root, '.backup'),
+    });
+
+    expect(res).to.be.eq('Restore successfully');
+
+    const docs = await broker.call(`driver.fs.find`, { limit: 10, skip: 6, sort: { updatedAt: -1 }, name: schema.name });
+
+    expect(docs).to.has.property('length', 10);
   });
 });

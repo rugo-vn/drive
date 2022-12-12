@@ -243,16 +243,16 @@ export const compress = async function ({ name: collection, id }) {
 export const backup = async function ({ name: collection, file }) {
   const inp = join(this.settings.root, collection);
 
-  const res = await exec(`cp -r "${inp}" "${file.toString()}"`);
+  await exec(`cp -r "${inp}" "${file.toString()}"`);
 
-  return res.stderr ? 'Cannot backup' : 'Backup successfully';
+  return 'Backup successfully';
 };
 
 export const restore = async function ({ name: collection, file }) {
   const out = join(this.settings.root, collection);
   rimraf.sync(out);
 
-  const res = await exec(`cp -r "${file.toString()}" "${out}"`);
+  await exec(`cp -r "${file.toString()}" "${out}"`);
 
-  return res.stderr ? 'Cannot restore' : 'Restore successfully';
+  return 'Restore successfully';
 };

@@ -11,29 +11,27 @@ export const removeRequired = (keyword, value) => {
 };
 
 const fnValue = (data, fn, args) => {
+  let from;
   switch (fn) {
     case 'slugify':
-      let from = ObjectPath.get(data, args.from);
-      if (typeof from !== 'string')
-        return;
+      from = ObjectPath.get(data, args.from);
+      if (typeof from !== 'string') { return; }
 
       return slugify(from, {
         replacement: '-',
         lower: true,
-        locale: 'vi',
+        locale: 'vi'
       });
-    default:
-      return;
   }
-}
+};
 
 const createFnDefault = (data = {}) => (keyword, value) => {
   if (keyword === 'default' && value && typeof value === 'object' && Object.keys(value).some(v => v === 'fn')) {
     return { [keyword]: fnValue(data, value.fn, value) };
   }
-  
+
   return { [keyword]: value };
-}
+};
 
 const mapToObject = (m) => {
   const o = {};
@@ -45,7 +43,7 @@ const mapToObject = (m) => {
 
 const objectToMap = (o, keys) => {
   const result = {};
-  for (let key of keys) {
+  for (const key of keys) {
     result[key] = ObjectPath.get(o, key);
   }
   return result;
@@ -83,16 +81,6 @@ const checkRequired = unset => (keyword, value, traces) => {
   return { [keyword]: value };
 };
 
-/**
- * Prepare args for next step:
- * - `uniques`
- * - `searches`
- * - `schema`
- * - `register`
- *
- * @param fn
- * @param args
- */
 export const commonAllHook = async function (fn, args) {
   const { name } = args;
   if (!name) { throw new RugoException('Driver action must have name as required argument.'); }
@@ -118,16 +106,11 @@ export const commonAllHook = async function (fn, args) {
   args.register = register;
 };
 
-/**
- * Validate data
- *
- * @param args
- */
 export const commonCreateHook = async function (args) {
   const { data, schema: raw } = args;
 
   const schema = new Schema(raw);
-  const fnDefaultSchema = new Schema (schema.walk(createFnDefault(data)));
+  const fnDefaultSchema = new Schema(schema.walk(createFnDefault(data)));
 
   const now = new Date().toISOString();
   data.createdAt ||= now;
@@ -137,14 +120,6 @@ export const commonCreateHook = async function (args) {
   args.data = fnDefaultSchema.validate(data);
 };
 
-/**
- * Validate data, re-compose:
- * - `set`
- * - `unset`
- * - `inc`
- *
- * @param args
- */
 export const commonUpdateHook = async function (args) {
   const { set, unset, schema: raw } = args;
 
